@@ -1,0 +1,4 @@
+name: BetterThanBrewery
+version: '1.0'
+main: dev.moonaticks.betterThanBrewery.BetterThanBrewery
+api-version: '1.21'
