@@ -1,56 +1,204 @@
 # BetterThanBrewery
 
-Конфигурируемый плагин пивоварения, дистилляции, выдержки и чаеварения для **Paper 26.2 / Java 25**. GUI построены через **CustomGuiReworked 2.x** — состояние станций хранится в его персистентном BLOCK-хранилище и продолжает работать без открытого меню.
+Конфигурируемый плагин пивоварения, дистилляции, выдержки и чаеварения для **Paper 26.2 / Java 25**. Все станционные интерфейсы создаются через **CustomGuiReworked 2.x**, а CraftEngine и ItemsAdder подключаются мягко и используются по namespace-ID из конфигурации.
 
-## Что уже реализовано
+## Основная идея
 
-- Бойлер, дистиллятор, бочонок и малый чайник: свои графические меню на 54 слота.
-- CraftEngine и ItemsAdder: ID блоков берутся из `config.yml`; GUI-фреймворк открывает их по правому клику. Предметы `craftengine:...` и `itemsadder:...` разрешаются без жёсткой зависимости и не ломают сервер, если интеграция не установлена.
-- Рецепты рекурсивно читаются из `plugins/BetterThanBrewery/recipes/` во всех файлах `*.yml` и `*.yaml`. Поддерживаются и отдельные файлы с одним рецептом, и один файл с несколькими рецептами через секцию `recipes:`. Можно добавлять сколько угодно файлов и папок.
-- Жидкость — это состояние станции с уровнем и возрастом. Забирать её можно только пустой тарой. Количество единиц на одну тару задаётся в секции `containers`.
-- Ингредиенты, вода, топливо, время, идеальное время, окно переваривания, побочные продукты с шансом, частицы и звуки.
-- Напитки используют Potion или предмет CraftEngine/ItemsAdder и получают PDC-теги `drink`, `age-weeks`, `alcohol`, `quality`, `units`. Поэтому кастомный предмет сохраняет механику плагина.
-- HEX и именованные цвета, hunger, эффекты, lore, команды Bukkit/CommandAPI-совместимые команды и Denizen script hooks.
-- Выдержка в неделях и безопасные формулы: `+`, `-`, `*`, `/`, `%`, `^`, скобки, `min`, `max`, `clamp`, `abs`, `floor`, `ceil`, `round`, `sqrt`, `if`. Формулы не исполняют Java/команды.
-- Опьянение 0–100: спад, стадии, эффекты, плавный случайный микросдвиг, чат-замены, actionbar, optional resource-pack overlay и plugin-message hook для pitch-аддона Simple Voice Chat.
-- Локальный title через CustomGuiReworked, `gui.title-offset` для ресурс-пак шрифтов, анимация уровня жидкости через local design, цветные индикаторы качества, подсказки прямо в слотах воды/переливания, частицы и звуки.
-- Профессиональный reload: открытые станционные GUI безопасно закрываются, рецепты валидируются, ошибки отдельных файлов не ломают остальные рецепты.
+BetterThanBrewery разделяет три вещи:
 
-## Проверки и CI
+1. **GUI и персистентность** — ответственность CustomGuiReworked.
+2. **Состояние технологического процесса** — ответственность BetterThanBrewery.
+3. **Определение предметов и блоков** — vanilla, ItemsAdder или CraftEngine через конфигурацию.
 
-В `src/test` находятся unit-тесты формул и цветов. GitHub Actions запускает `clean test build` на Java 25 для каждого push и pull request (`.github/workflows/build.yml`). Локальный запуск: `./gradlew test`; для полной проверки — `./gradlew clean test build`.
+Станция продолжает работать после закрытия меню и рестарта сервера. Состояние не хранится в памяти игрока: оно привязано к локации функционального блока и сохраняется через BLOCK storage CustomGuiReworked.
 
-## Установка
+Поддерживаемые станции:
 
-1. Установить Paper 26.2, CustomGuiReworked 2.x и (по желанию) CraftEngine, ItemsAdder, Denizen и voice-chat.
-2. Положить BetterThanBrewery в `plugins/` и один раз запустить сервер.
-3. В `plugins/BetterThanBrewery/config.yml` заменить примерные `stations.*.blocks` на реальные ID блоков.
-4. Редактировать рецепты в `plugins/BetterThanBrewery/recipes/`; `/betterbrewery reload` перечитывает их.
+- бойлер;
+- дистиллятор;
+- бочонок;
+- чайник.
 
-В каждом рецепте `output.name` и `output.color` обязательны; остальные поля напитка можно не указывать. `output.item` позволяет заменить Potion на CraftEngine/ItemsAdder предмет.
+## Что изменено в модели результатов
 
-## Интерфейсы, скелет и выпадение при разрушении
+Станции больше **не используют RESULT-слоты**.
 
-Станционные GUI создаются именно через CustomGuiReworked: используется `CustomGuiAPI.builder(...)`, `StorageType.BLOCK` и функциональный блок с `onBlockTick`, `onItemChanged` и обработчиком кликов. В плагине нет отдельного самописного `InventoryClickEvent`-GUI и нет собственного обработчика `BlockBreakEvent` для станций. Персистентное содержимое блока и его выпадение при разрушении отдаётся CustomGuiReworked; BetterThanBrewery отвечает за состояние жидкости, прогресс, рецепты и побочные продукты. Для ItemsAdder-станций плагин дополнительно адресует BLOCK-хранилище через официальный `StorageKey.forBlock`, чтобы содержимое имело тот же ключ мира и координат.
+Удалены из конфигурации и модели станций:
 
-По умолчанию каждый слот сначала становится `DESIGN` и получает заполнитель. Затем из секции `stations.<id>.skeleton` нужные слоты переводятся в типы CustomGuiReworked:
+- `result-slot`;
+- `byproduct-slots`;
+- `StationDefinition.resultSlot`;
+- `StationDefinition.byproductSlots`;
+- назначение `SlotType.RESULT` для станционных меню.
 
-- `craft` — ингредиенты;
-- `fuel` — топливо;
-- `container` — обычный персистентный контейнер;
-- `fluid` — колонка жидкости на персистентных `CONTAINER`-слотах; клики, drag и shift-click блокируются, а фактическое поведение даёт FunctionalBlock;
-- неуказанные слоты остаются `design`.
+Основной результат любого процесса теперь является жидкостью. Он хранится в графе жидкости и показывается в fluid-колонках. Выдача происходит только через настроенную тару.
 
-Заполнитель может быть ванильным или кастомным предметом с provider и namespace:
+Твёрдые побочные продукты не занимают слоты результата. Если у рецепта сработал `byproducts`, предмет выпадает рядом со станцией.
+
+## Fluid-колонки
+
+Fluid-колонки — это список слотов, в которых визуально показывается уровень жидкости. По умолчанию используются:
 
 ```yaml
 gui:
-  filler: "minecraft:black_stained_glass_pane"
+  fluid-slots: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
+```
 
+Для каждой станции список можно переопределить в скелете:
+
+```yaml
 stations:
   boiler:
-    # необязательно: переопределяет gui.filler только для бойлера
-    filler: "itemsadder:brewery:boiler_filler"
+    skeleton:
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
+```
+
+### Как зарегистрированы fluid-слоты
+
+Fluid-слоты регистрируются через CustomGuiReworked как обычные персистентные `CONTAINER`-слоты. Это позволяет использовать BLOCK storage фреймворка и сохранить единый механизм хранения.
+
+При этом они не являются обычными контейнерами для игрока. BetterThanBrewery блокирует их вручную:
+
+- обычный клик пустой рукой;
+- попытку положить любой предмет;
+- попытку забрать визуальный предмет;
+- drag по fluid-колонке;
+- shift-click из инвентаря игрока в станцию.
+
+Фактический клик обрабатывается `FunctionalBlock` и `StationManager`.
+
+В текущем API CustomGuiReworked ещё нет внешней регистрации новых `SlotType`. Поэтому `fluid` — это конфигурационное имя специальной механики BetterThanBrewery, которая мапится на `SlotType.CONTAINER` и блокируется плагином. Когда во фреймворке появится API кастомных типов слотов, fluid можно будет перенести на отдельный нативный тип без изменения рецептов.
+
+### Состояние жидкости
+
+Для блока используются persistent keys CustomGuiReworked:
+
+| Ключ | Значение |
+|---|---|
+| `fluid` | ID текущей жидкости |
+| `fluid-level` | количество жидкостных единиц |
+| `age-ticks` | возраст жидкости для выдержки |
+| `quality` | качество результата |
+| `progress` | прогресс текущего процесса |
+| `recipe` | активный рецепт |
+| `fluid-render` | технический ключ последнего визуального состояния |
+
+`fluid-render` нужен для оптимизации: визуальные предметы не перезаписываются в storage каждый тик, если уровень, возраст и качество не изменились.
+
+### Визуальный предмет жидкости
+
+В fluid-слотах хранится только безопасная визуализация:
+
+```yaml
+gui:
+  fluid-icon: minecraft:potion
+```
+
+Визуализация получает имя, цвет и lore жидкости, но не получает PDC-теги напитка BetterThanBrewery. Поэтому даже если CustomGuiReworked отдаст визуальный предмет при разрушении блока, это не будет настоящим напитком и не позволит обойти правило тары.
+
+Настоящий напиток создаётся только при переливании в подходящую тару через `DrinkService.createFilled(...)`.
+
+## Получение жидкости только тарой
+
+Тара настраивается в `config.yml`:
+
+```yaml
+containers:
+  bottle:
+    empty: minecraft:glass_bottle
+    filled: minecraft:potion
+    units: 1
+
+  cup:
+    empty: minecraft:bowl
+    filled: minecraft:potion
+    units: 1
+```
+
+Для кастомной тары используются те же provider и namespace-ID:
+
+```yaml
+containers:
+  brewery_bottle:
+    empty: itemsadder:brewery:empty_bottle
+    filled: itemsadder:brewery:filled_bottle
+    units: 2
+```
+
+Алгоритм выдачи жидкости:
+
+1. Игрок кликает по fluid-колонке.
+2. Плагин проверяет предмет на курсоре через `containers.*.empty`.
+3. Если предмет не является пустой тарой, действие отменяется.
+4. Если жидкостных единиц меньше, чем требует тара, действие отменяется.
+5. Из состояния станции вычитается `units`.
+6. Создаётся заполненная тара из `containers.*.filled`.
+7. В заполненный предмет записываются PDC-теги:
+   - `drink`;
+   - `age-weeks`;
+   - `alcohol`;
+   - `quality`;
+   - `units`.
+
+Таким образом, жидкость невозможно получить кликом по визуальной колонке, обычным предметом или пустой рукой.
+
+Вода работает по тому же принципу. Источник воды задаётся так:
+
+```yaml
+water:
+  source-items:
+    - minecraft:water_bucket
+    - minecraft:potion_water
+  bucket-units: 4
+  bottle-name: "&bВода"
+```
+
+## Архитектура GUI
+
+Станционное меню строится в `StationManager.registerGui(...)` через:
+
+```java
+CustomGuiAPI.builder(station.gui())
+    .title(title)
+    .size(54)
+    .storage(StorageType.BLOCK);
+```
+
+Дальше применяется скелет:
+
+1. Все 54 слота получают тип `DESIGN` и предмет-заполнитель.
+2. Fluid-колонки переводятся в `CONTAINER`.
+3. Слоты `craft` переводятся в `CRAFT`.
+4. Слоты `fuel` переводятся в `FUEL`.
+5. Слоты `container` переводятся в `CONTAINER`.
+6. Все остальные слоты остаются декоративными `DESIGN`.
+
+Функциональный блок регистрируется через:
+
+```java
+FunctionalBlock.builder(blockId)
+    .gui(station.gui())
+    .onOpen(...)
+    .onTick(...)
+    .onClick(...)
+    .onItemChanged(...)
+    .onBlockTick(...)
+    .register();
+```
+
+Используются именно события и storage CustomGuiReworked, а не самописный Bukkit inventory GUI.
+
+### Скелет станции
+
+```yaml
+stations:
+  boiler:
+    enabled: true
+    gui: boiler
+    capacity: 10
+    water-capacity: 10
+    water-input-slot: 40
+    ingredient-slots: [10, 11, 12, 13, 14, 15]
     skeleton:
       fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       craft: [10, 11, 12, 13, 14, 15]
@@ -58,11 +206,112 @@ stations:
       container: []
 ```
 
-Для CraftEngine используется такой же формат: `craftengine:brewery:boiler_filler`. Если секцию `skeleton` удалить, сохраняется обратная совместимость со старыми `ingredient-slots`; основной результат всё равно отображается и забирается только через fluid-колонки.
+Доступные ключи скелета:
+
+| Ключ | Тип CustomGuiReworked | Назначение |
+|---|---|---|
+| `fluid` | `CONTAINER` + ручная блокировка | жидкостные колонки |
+| `craft` | `CRAFT` | ингредиенты рецепта |
+| `fuel` | `FUEL` | топливо |
+| `container` | `CONTAINER` | обычные персистентные слоты |
+| остальные | `DESIGN` | декоративный filler |
+
+Если секцию `skeleton` удалить, используются старые поля `ingredient-slots`, а fluid-слоты берутся из `gui.fluid-slots`.
+
+### Входные слоты
+
+Входные слоты жидкости не являются результатами:
+
+```yaml
+stations:
+  boiler:
+    water-input-slot: 40
+
+  distiller:
+    fluid-input-slot: 40
+
+  barrel:
+    fluid-input-slot: 40
+```
+
+- бойлер и чайник принимают воду;
+- дистиллятор принимает напиток с PDC-тегом BetterThanBrewery;
+- бочонок принимает напиток с PDC-тегом BetterThanBrewery;
+- fluid-колонки показывают состояние жидкости и используются для забора через тару.
+
+## Заполнители интерфейса
+
+Глобальный filler:
+
+```yaml
+gui:
+  filler: minecraft:black_stained_glass_pane
+```
+
+Filler отдельной станции:
+
+```yaml
+stations:
+  boiler:
+    filler: itemsadder:brewery:boiler_filler
+```
+
+Поддерживаются vanilla и кастомные предметы:
+
+```yaml
+minecraft:black_stained_glass_pane
+itemsadder:brewery:boiler_filler
+craftengine:brewery:boiler_filler
+ia:brewery:boiler_filler
+ce:brewery:boiler_filler
+```
+
+Plain namespaced ID тоже поддерживается:
+
+```yaml
+brewery:boiler_filler
+```
+
+В таком случае ItemService попробует найти предмет сначала в ItemsAdder, затем в CraftEngine.
+
+## ItemsAdder, CraftEngine и namespace
+
+Полный provider-ID состоит из трёх частей:
+
+```text
+provider:namespace:item_id
+```
+
+Примеры:
+
+```yaml
+itemsadder:brewery:recipe_book
+craftengine:brewery:recipe_book
+itemsadder:decor:boiler_filler
+craftengine:decor:filled_bottle
+```
+
+Внутрь API провайдера передаётся именно namespaced ID без provider-префикса:
+
+```text
+brewery:recipe_book
+brewery:boiler_filler
+```
+
+Это правило работает одинаково для:
+
+- ингредиентов;
+- топлива;
+- тары;
+- результата напитка;
+- filler предметов;
+- иконок GUI;
+- предмета книги рецептов;
+- блоков станций.
 
 ## Книга рецептов
 
-Книга открывается правым кликом по настроенному предмету и использует GUI-фреймворк CustomGuiReworked. По умолчанию это обычная `minecraft:book`, но предмет можно заменить на ItemsAdder или CraftEngine в `config.yml`:
+Книга открывается правым кликом по настроенному предмету через CustomGuiReworked. Она не расходуется.
 
 ```yaml
 recipe-book:
@@ -70,29 +319,71 @@ recipe-book:
   items:
     - "itemsadder:brewery:recipe_book"
     - "craftengine:brewery:recipe_book"
-  recipes: [] # пусто — показывать все рецепты; иначе список ID
+
+  # Пустой список показывает все загруженные рецепты.
+  recipes: []
+
   gui:
     title: "&6Книга рецептов"
+    detail-title: "&6Рецепт: &f{recipe}"
+    size: 54
+    filler: "minecraft:black_stained_glass_pane"
     recipe-icon: "minecraft:potion"
     recipe-slots: [10, 11, 12, 13, 14, 15, 16]
 ```
 
-Поддерживаются префиксы владельца `itemsadder:`/`ia:` и `craftengine:`/`ce:`. Полный ID записывается как `itemsadder:<namespace>:<item>` или `craftengine:<namespace>:<item>`, например `itemsadder:brewery:recipe_book`. Namespace и ID после префикса передаются в провайдер как единый ID `brewery:recipe_book`. Если указать просто `brewery:recipe_book`, загрузчик попробует оба провайдера. Можно указать один предмет через `recipe-book.item` вместо списка `recipe-book.items`. Предмет не расходуется. Клик по напитку открывает подробную страницу с ингредиентами, станцией, временем, водой, крепостью и выдержкой. Размер GUI, кнопки страниц, слоты, иконки, внешний вид и тексты полностью настраиваются в секции `recipe-book.gui`. После `/betterbrewery reload` книга и список рецептов перестраиваются без перезапуска сервера.
+Можно указать один предмет:
 
-## Базовый набор рецептов
+```yaml
+recipe-book:
+  item: "itemsadder:brewery:recipe_book"
+```
 
-В поставку добавлен небольшой стартовый набор в `recipes/brewery/`:
+Если указать plain namespaced ID, будут проверены оба optional-провайдера:
 
-- бойлер: пшеничное пиво, ягодное вино, медовуха;
-- дистиллятор: зерновая водка, ягодный спирт, виски, ром и абсент;
-- бочонок: дубовое пиво и выдержанное ягодное вино;
-- чайник: чёрный, мятный и ягодный чай, кофе.
+```yaml
+recipe-book:
+  item: "brewery:recipe_book"
+```
 
-Это не жёсткая игровая система: каждый YAML можно менять, копировать или удалять. Например, чтобы сделать ром, достаточно заменить ингредиенты, цвет, формулу и `input-fluid`.
+Книга поддерживает:
 
-## Один файл с несколькими рецептами
+- страницы;
+- список разрешённых ID рецептов;
+- иконки напитков;
+- подробную страницу рецепта;
+- список ингредиентов;
+- информацию о станции;
+- время;
+- воду;
+- крепость;
+- выдержку;
+- кастомные filler и кнопки.
 
-Обычный формат с одним рецептом в файле продолжает работать. Если рецептов много, их можно собрать в один `recipes.yml` или в любой другой YAML-файл внутри папки `recipes/`:
+После `/betterbrewery reload` страницы книги перестраиваются.
+
+## Рецепты
+
+Рецепты можно хранить по одному в файле:
+
+```yaml
+id: wheat_beer
+station: boiler
+time: 700
+ideal-time: 700
+overcook-window: 350
+water: 3
+ingredients:
+  - item: minecraft:wheat
+    amount: 3
+output:
+  id: wheat_beer
+  name: "&6Пшеничное пиво"
+  color: "#D49A45"
+  alcohol: 6
+```
+
+Или несколько рецептов в одном файле:
 
 ```yaml
 recipes:
@@ -111,7 +402,6 @@ recipes:
   berry_wine:
     id: berry_wine
     station: boiler
-    time: 900
     ingredients:
       - item: minecraft:sweet_berries
         amount: 6
@@ -121,7 +411,7 @@ recipes:
       alcohol: 8
 ```
 
-Ключ `wheat_beer` используется как `id`, если `id` внутри рецепта не указан. Также допускается YAML-список под `recipes:` — в таком варианте каждый элемент должен иметь свой `id`:
+Также поддерживается список:
 
 ```yaml
 recipes:
@@ -143,9 +433,115 @@ recipes:
       color: "#6B3E26"
 ```
 
-Оба варианта можно использовать одновременно: загрузчик рекурсивно собирает рецепты из всех `.yml` и `.yaml`. При совпадении ID последний прочитанный рецепт заменяет предыдущий и записывается предупреждение в консоль.
+Загрузчик рекурсивно читает все `.yml` и `.yaml` внутри:
 
-## Формат формулы выдержки
+```text
+plugins/BetterThanBrewery/recipes/**/*.yml
+plugins/BetterThanBrewery/recipes/**/*.yaml
+```
+
+При совпадении ID последний загруженный рецепт заменяет предыдущий, а в консоль записывается предупреждение.
+
+## Поля рецепта
+
+Обязательные поля напитка:
+
+```yaml
+output:
+  name: "Название"
+  color: "#D49A45"
+```
+
+Остальные поля опциональны:
+
+```yaml
+output:
+  id: wheat_beer
+  name: "&6Пшеничное пиво"
+  color: "#D49A45"
+  item: "itemsadder:brewery:wheat_beer"
+  food: 3
+  alcohol: 6
+  lore:
+    - "&7Мягкая солодовая основа."
+  effects:
+    - type: NIGHT_VISION
+      duration: 80
+      amplifier: 0
+      chance: 1.0
+```
+
+Поддерживаются:
+
+- `station`;
+- `ingredients`;
+- `water` или `water-units`;
+- `time`;
+- `time-seconds`;
+- `ideal-time`;
+- `max-time`;
+- `overcook-window`;
+- `fuel.item`;
+- `fuel.amount`;
+- `input-fluid`;
+- `output.fluid`;
+- `weeks` или `age-weeks`;
+- `byproducts`;
+- `formulas`;
+- `food`;
+- `alcohol`;
+- `effects`;
+- `commands`;
+- `denizen-script`;
+- `output.item`.
+
+## Цепочки производства
+
+Рецепты могут соединяться через ID жидкости:
+
+```text
+бойлер/чайник → жидкость → дистиллятор → жидкость → бочонок → заполненная тара
+```
+
+Пример:
+
+```yaml
+# boiler recipe
+id: wheat_beer
+station: boiler
+output:
+  id: wheat_beer
+  fluid: wheat_beer
+  name: "&6Пшеничное пиво"
+  color: "#D49A45"
+```
+
+```yaml
+# distiller recipe
+id: grain_vodka
+station: distiller
+input-fluid: wheat_beer
+output:
+  id: grain_vodka
+  fluid: grain_vodka
+  name: "&fЗерновая водка"
+  color: "#E8F4FF"
+```
+
+```yaml
+# barrel recipe
+id: oak_beer
+station: barrel
+input-fluid: wheat_beer
+weeks: 4
+output:
+  id: oak_beer
+  fluid: oak_beer
+  name: "&6Дубовое пиво"
+  color: "#B87830"
+```
+
+## Выдержка и формулы
 
 ```yaml
 station: barrel
@@ -156,10 +552,109 @@ formulas:
   food: "food + floor(age / 2)"
 ```
 
-`age`, `weeks`, `alcohol`, `base_alcohol`, `food`, `base_food`, `quality` и `potency` доступны в формулах. Качество автоматически влияет на базовую крепость через `potency`, а формулы могут изменить это поведение. Для эффектов доступны `duration-formula` и `amplifier-formula`.
+Доступные переменные:
 
-## Важное про CustomGuiReworked
+- `age`;
+- `weeks`;
+- `alcohol`;
+- `base_alcohol`;
+- `food`;
+- `base_food`;
+- `quality`;
+- `potency`.
 
-Фреймворк — не просто InventoryClickListener: у него есть скелет `DESIGN/CRAFT/FUEL/CONTAINER/RESULT`, BLOCK storage, local title/design для конкретного зрителя, функциональные блоки с `onBlockTick` и события фактического изменения слотов. BetterThanBrewery использует именно эти API: закрытие GUI не останавливает варку, предметы не лежат в памяти игрока, а экранная жидкость не может быть украдена как декоративный предмет. Станции больше не используют framework-слоты `RESULT`: жидкость отображается и забирается только через fluid-колонки `CONTAINER`, а все их клики блокируются и обрабатываются FunctionalBlock вручную.
+Поддерживаются безопасные операции:
 
-Pitch Simple Voice Chat требует небольшого клиентского/voice addon, который слушает канал `betterthanbrewery:voice_pitch` (float pitch, int duration, UTF-8 player name). Это сделано намеренно: официальный Bukkit API Simple Voice Chat не меняет pitch входящего микрофона сам по себе. Без addon остальные стадии опьянения продолжают работать.
+```text
++ - * / % ^
+min max clamp abs floor ceil round sqrt if
+```
+
+Формулы не исполняют Java-код, команды или произвольные выражения.
+
+## Разрушение станции и persistence
+
+BetterThanBrewery не реализует собственный `BlockBreakEvent` для станций.
+
+Фреймворк CustomGuiReworked отвечает за:
+
+- BLOCK storage;
+- связь GUI с миром и координатами блока;
+- сохранение содержимого;
+- закрытие открытых GUI;
+- обработку разрушения функционального блока;
+- выпадение содержимого persistent-слотов.
+
+BetterThanBrewery отвечает за:
+
+- liquid graph;
+- `fluid`, `fluid-level`, `age-ticks`, `quality`;
+- прогресс;
+- проверку рецепта;
+- выдачу только через тару;
+- безопасные fluid-визуализации;
+- выпадение твёрдых побочных продуктов после успешного процесса.
+
+Для ItemsAdder storage дополнительно адресуется через `StorageKey.forBlock(...)`, чтобы ключ использовал тот же мир и координаты блока.
+
+## Команды
+
+```text
+/betterbrewery reload
+```
+
+Перечитывает:
+
+- `config.yml`;
+- сообщения;
+- контейнеры;
+- рецепты;
+- станции;
+- книгу рецептов;
+- GUI-скелеты.
+
+```text
+/betterbrewery info
+```
+
+Показывает версию, количество рецептов, напитков и станций.
+
+## Проверки и CI
+
+Тесты находятся в `src/test`.
+
+Проверяются:
+
+- цветовые форматы;
+- формулы;
+- наличие bundled-рецептов;
+- загрузка нескольких рецептов из одного YAML;
+- provider/namespace-разбор custom item ID.
+
+GitHub Actions запускает:
+
+```text
+./gradlew clean test build --no-daemon --stacktrace
+```
+
+CI выполняется на Temurin Java 25 для push и pull request.
+
+Локальная проверка:
+
+```bash
+./gradlew test
+./gradlew clean test build
+```
+
+## Установка
+
+1. Установить Paper 26.2.
+2. Установить CustomGuiReworked 2.x.
+3. По необходимости установить CraftEngine, ItemsAdder, Denizen и voice-chat.
+4. Положить BetterThanBrewery в `plugins/`.
+5. Запустить сервер.
+6. Настроить `stations.*.blocks` под реальные ID CraftEngine или ItemsAdder.
+7. Настроить `recipe-book.items`, если нужна кастомная книга.
+8. Перезапустить сервер или выполнить `/betterbrewery reload`.
+
+Без установленного ItemsAdder или CraftEngine соответствующие ID не ломают загрузку плагина: предмет считается недоступным и пропускается.
