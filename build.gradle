@@ -1,35 +1,35 @@
 plugins {
     id 'java'
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("xyz.jpenilla.run-paper") version "3.1.0"
 }
 
 group = 'dev.moonaticks'
-version = '1.0'
+version = '0.1.0'
+
+def paperVersion = '26.2.build.123-stable'
+
+def targetJavaVersion = 25
 
 repositories {
     mavenCentral()
-    maven {
-        name = "papermc-repo"
-        url = "https://repo.papermc.io/repository/maven-public/"
-    }
-    maven { url 'https://repo.momirealms.net/releases/' }
+    maven { name = 'papermc'; url = 'https://repo.papermc.io/repository/maven-public/' }
+    maven { name = 'momirealms'; url = 'https://repo.momirealms.net/releases/' }
+    maven { name = 'jitpack'; url = 'https://jitpack.io' }
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly 'net.momirealms:craft-engine-core:26.8.2' // replace "{version}" with the plugin stable version
+    compileOnly "io.papermc.paper:paper-api:${paperVersion}"
+    // CustomGuiReworked is a server plugin and is deliberately not shaded.
+    compileOnly 'com.github.amper24:CustomGuiReworked:2.4.0'
+    // Optional: used only by CustomGuiReworked's CraftEngine hook at runtime.
+    compileOnly('net.momirealms:craft-engine-core:26.7.2') { transitive = false }
+    compileOnly('net.momirealms:craft-engine-bukkit:26.7.2') { transitive = false }
 }
 
-tasks {
-    runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21")
-    }
+tasks.named('runServer', xyz.jpenilla.runpaper.task.RunServer) {
+    minecraftVersion '26.2'
 }
 
-def targetJavaVersion = 21
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
@@ -41,17 +41,12 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        options.release.set(targetJavaVersion)
-    }
+    options.release.set(targetJavaVersion)
 }
 
 processResources {
     def props = [version: version]
     inputs.properties props
-    filteringCharset 'UTF-8'
-    filesMatching('plugin.yml') {
-        expand props
-    }
+    filteringCharset = 'UTF-8'
+    filesMatching('plugin.yml') { expand props }
 }
