@@ -19,12 +19,14 @@ gui:
   input-icon: minecraft:glass_bottle
   fluid-slots: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
 
-# Recipe book. Replace minecraft:book with one or more custom IDs when desired.
-# Supported prefixes: itemsadder:, ia:, craftengine: and ce:.
+# Recipe book. A custom ID has two prefixes: provider and namespace.
+# Example: itemsadder:brewery:recipe_book means the ItemsAdder item brewery:recipe_book.
+# Supported provider prefixes: itemsadder:, ia:, craftengine: and ce:.
+# A plain namespaced ID (brewery:recipe_book) tries ItemsAdder and CraftEngine.
 recipe-book:
   enabled: true
   items: ["minecraft:book"]
-  # Alternative single-item form when items is omitted: item: "itemsadder:my_recipe_book"
+  # Alternative single-item form when items is omitted: item: "itemsadder:brewery:recipe_book"
   open-on-block: false
   # Empty list shows every loaded recipe. Otherwise only these recipe IDs are shown.
   recipes: []

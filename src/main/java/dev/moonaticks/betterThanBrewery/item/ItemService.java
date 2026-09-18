@@ -26,18 +26,66 @@ public final class ItemService {
         this.itemKey = new NamespacedKey(plugin, "item-key");
     }
 
+    /**
+     * Describes a custom item reference. The plugin prefix is separate from
+     * the provider namespace, so e.g. {@code itemsadder:brewery:recipe_book}
+     * resolves the ItemsAdder item {@code brewery:recipe_book}.
+     */
+    public record CustomItemReference(String provider, String namespace, String id) {
+        public String lookupId() {
+            return namespace == null || namespace.isBlank() ? id : namespace + ":" + id;
+        }
+    }
+
+    /**
+     * Parses provider-prefixed IDs and plain namespaced IDs. Plain IDs such as
+     * {@code brewery:recipe_book} are tried against both optional providers;
+     * provider-prefixed IDs are deterministic and recommended in config.
+     */
+    public static CustomItemReference parseCustomItem(String spec) {
+        if (spec == null || spec.isBlank()) return null;
+        String value = spec.trim();
+        int firstColon = value.indexOf(':');
+        if (firstColon <= 0) return null;
+        String prefix = value.substring(0, firstColon).toLowerCase(Locale.ROOT);
+        if (prefix.equals("minecraft")) return null;
+        String provider;
+        if (prefix.equals("itemsadder") || prefix.equals("ia")) provider = "itemsadder";
+        else if (prefix.equals("craftengine") || prefix.equals("ce")) provider = "craftengine";
+        else {
+            // A normal namespaced custom ID has no provider prefix. Try both
+            // integrations instead of treating it as an invalid Material.
+            provider = "auto";
+            return namespacedReference(provider, value);
+        }
+        return namespacedReference(provider, value.substring(firstColon + 1));
+    }
+
+    private static CustomItemReference namespacedReference(String provider, String value) {
+        if (value == null || value.isBlank()) return null;
+        int separator = value.indexOf(':');
+        if (separator < 0) return new CustomItemReference(provider, "", value);
+        String namespace = value.substring(0, separator);
+        String id = value.substring(separator + 1);
+        if (namespace.isBlank() || id.isBlank()) return null;
+        return new CustomItemReference(provider, namespace, id);
+    }
+
     public ItemStack create(String spec) {
         if (spec == null || spec.isBlank()) return new ItemStack(Material.AIR);
         String value = spec.trim();
         String lower = value.toLowerCase(Locale.ROOT);
-        ItemStack custom = null;
-        if (lower.startsWith("itemsadder:") || lower.startsWith("ia:")) custom = itemsAdder(value.substring(value.indexOf(':') + 1));
-        else if (lower.startsWith("craftengine:") || lower.startsWith("ce:")) custom = craftEngine(value.substring(value.indexOf(':') + 1));
+        CustomItemReference reference = parseCustomItem(value);
+        ItemStack custom = reference == null ? null : resolveCustom(reference);
         if (custom != null) {
             mark(custom, value);
             return custom;
         }
-        String materialName = lower.startsWith("minecraft:") ? value.substring(value.indexOf(':') + 1) : value;
+        String materialName;
+        if (lower.startsWith("minecraft:")) materialName = value.substring(value.indexOf(':') + 1);
+        else if (lower.startsWith("itemsadder:") || lower.startsWith("ia:")
+                || lower.startsWith("craftengine:") || lower.startsWith("ce:")) materialName = "";
+        else materialName = value;
         if (materialName.equalsIgnoreCase("potion_water")) {
             ItemStack potion = new ItemStack(Material.POTION);
             if (potion.getItemMeta() instanceof PotionMeta meta) { meta.setColor(org.bukkit.Color.AQUA); potion.setItemMeta(meta); }
@@ -101,6 +149,17 @@ public final class ItemService {
             meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, key.toLowerCase(Locale.ROOT));
             item.setItemMeta(meta);
         }
+    }
+
+    private ItemStack resolveCustom(CustomItemReference reference) {
+        return switch (reference.provider()) {
+            case "itemsadder" -> itemsAdder(reference.lookupId());
+            case "craftengine" -> craftEngine(reference.lookupId());
+            default -> {
+                ItemStack item = itemsAdder(reference.lookupId());
+                yield item == null ? craftEngine(reference.lookupId()) : item;
+            }
+        };
     }
 
     private ItemStack itemsAdder(String id) {

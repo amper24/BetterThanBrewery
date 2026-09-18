@@ -37,8 +37,8 @@
 recipe-book:
   enabled: true
   items:
-    - "itemsadder:betterthanbrewery_recipe_book"
-    - "craftengine:betterthanbrewery_recipe_book"
+    - "itemsadder:brewery:recipe_book"
+    - "craftengine:brewery:recipe_book"
   recipes: [] # пусто — показывать все рецепты; иначе список ID
   gui:
     title: "&6Книга рецептов"
@@ -46,7 +46,7 @@ recipe-book:
     recipe-slots: [10, 11, 12, 13, 14, 15, 16]
 ```
 
-Поддерживаются префиксы `itemsadder:`/`ia:` и `craftengine:`/`ce:`. Можно указать один предмет через `recipe-book.item` вместо списка `recipe-book.items`. Предмет не расходуется. Клик по напитку открывает подробную страницу с ингредиентами, станцией, временем, водой, крепостью и выдержкой. Размер GUI, кнопки страниц, слоты, иконки, внешний вид и тексты полностью настраиваются в секции `recipe-book.gui`. После `/betterbrewery reload` книга и список рецептов перестраиваются без перезапуска сервера.
+Поддерживаются префиксы владельца `itemsadder:`/`ia:` и `craftengine:`/`ce:`. Полный ID записывается как `itemsadder:<namespace>:<item>` или `craftengine:<namespace>:<item>`, например `itemsadder:brewery:recipe_book`. Namespace и ID после префикса передаются в провайдер как единый ID `brewery:recipe_book`. Если указать просто `brewery:recipe_book`, загрузчик попробует оба провайдера. Можно указать один предмет через `recipe-book.item` вместо списка `recipe-book.items`. Предмет не расходуется. Клик по напитку открывает подробную страницу с ингредиентами, станцией, временем, водой, крепостью и выдержкой. Размер GUI, кнопки страниц, слоты, иконки, внешний вид и тексты полностью настраиваются в секции `recipe-book.gui`. После `/betterbrewery reload` книга и список рецептов перестраиваются без перезапуска сервера.
 
 ## Базовый набор рецептов
 
