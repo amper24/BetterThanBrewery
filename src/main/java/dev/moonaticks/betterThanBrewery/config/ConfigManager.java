@@ -25,9 +25,8 @@ public final class ConfigManager {
                 "recipes/brewery/berry-spirit.yml", "recipes/brewery/whiskey.yml",
                 "recipes/brewery/rum.yml", "recipes/brewery/absinthe.yml",
                 "recipes/brewery/oak-beer.yml", "recipes/brewery/oak-wine.yml",
-                "recipes/brewery/black-tea.yml",
-                "recipes/brewery/mint-tea.yml", "recipes/brewery/berry-tea.yml",
-                "recipes/brewery/coffee.yml"}) copyIfMissing(resource);
+                "recipes/kettle/black-tea.yml", "recipes/kettle/mint-tea.yml",
+                "recipes/kettle/berry-tea.yml", "recipes/kettle/coffee.yml"}) copyIfMissing(resource);
         messagesFile = new File(plugin.getDataFolder(), "messages.yml");
         messages = YamlConfiguration.loadConfiguration(messagesFile);
     }
