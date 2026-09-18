@@ -1,0 +1,21 @@
+id: black_tea
+station: kettle
+time: 260
+water: 2
+ingredients:
+  - item: minecraft:paper
+    amount: 1
+  - item: minecraft:cocoa_beans
+    amount: 1
+output:
+  id: black_tea
+  name: "&6Чёрный чай"
+  color: "#6F3B1F"
+  alcohol: 0
+  food: 3
+  lore:
+    - "&7Простой горячий чай для долгой ночи."
+  effects:
+    - type: SPEED
+      duration: 140
+      amplifier: 0

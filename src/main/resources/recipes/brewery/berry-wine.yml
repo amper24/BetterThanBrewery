@@ -1,0 +1,27 @@
+id: berry_wine
+station: boiler
+time: 900
+ideal-time: 900
+overcook-window: 450
+water: 4
+ingredients:
+  - item: minecraft:sweet_berries
+    amount: 4
+  - item: minecraft:sugar
+    amount: 2
+output:
+  id: berry_wine
+  name: "&dЯгодное вино"
+  color: "#8B1E5A"
+  alcohol: 12
+  food: 2
+  lore:
+    - "&7Сладкое вино из лесных ягод."
+  effects:
+    - type: REGENERATION
+      duration: 80
+      amplifier: 0
+byproducts:
+  - item: minecraft:sweet_berries
+    amount: 1
+    chance: 0.25

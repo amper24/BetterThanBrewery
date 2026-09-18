@@ -1,0 +1,19 @@
+id: berry_spirit
+station: distiller
+time: 1050
+input-fluid: berry_wine
+fuel:
+  item: minecraft:coal
+  amount: 1
+output:
+  id: berry_spirit
+  name: "&5Ягодный спирт"
+  color: "#5A123D"
+  alcohol: 30
+  food: 1
+  lore:
+    - "&7Яркий аромат, который не спрячешь."
+byproducts:
+  - item: minecraft:charcoal
+    amount: 1
+    chance: 0.4

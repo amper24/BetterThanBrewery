@@ -1,0 +1,29 @@
+# Базовое пиво в стиле Brewery.
+id: wheat_beer
+station: boiler
+time: 700
+ideal-time: 700
+overcook-window: 350
+water: 3
+ingredients:
+  - item: minecraft:wheat
+    amount: 3
+  - item: minecraft:sugar
+    amount: 1
+output:
+  id: wheat_beer
+  name: "&6Пшеничное пиво"
+  color: "#D49A45"
+  alcohol: 6
+  food: 3
+  lore:
+    - "&7Мягкая солодовая основа."
+    - "&8Лучше всего пьётся охлаждённым."
+  effects:
+    - type: NIGHT_VISION
+      duration: 80
+      amplifier: 0
+byproducts:
+  - item: minecraft:wheat_seeds
+    amount: 1
+    chance: 0.55

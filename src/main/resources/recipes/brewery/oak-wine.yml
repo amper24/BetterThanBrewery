@@ -1,0 +1,16 @@
+id: oak_wine
+station: barrel
+input-fluid: berry_wine
+weeks: 6
+formulas:
+  alcohol: "alcohol + age * 0.65"
+  food: "food + floor(age / 4)"
+output:
+  id: oak_wine
+  name: "&4Выдержанное ягодное вино"
+  color: "#5B1238"
+  alcohol: 12
+  food: 2
+  lore:
+    - "&7Глубокий вкус и терпкий аромат."
+    - "&7Возраст: &f{age} недель"

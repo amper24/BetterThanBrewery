@@ -1,0 +1,21 @@
+id: herbal_tea
+station: kettle
+time: 300
+water: 2
+ingredients:
+  - item: minecraft:short_grass
+    amount: 2
+  - item: minecraft:honey_bottle
+    amount: 1
+output:
+  id: herbal_tea
+  name: "&eТравяной чай"
+  color: "#D5A72A"
+  alcohol: 0
+  food: 4
+  lore:
+    - "&7Тёплый чай из маленького чайника."
+  effects:
+    - type: REGENERATION
+      duration: 100
+      amplifier: 0

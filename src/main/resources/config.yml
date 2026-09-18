@@ -1,0 +1,197 @@
+# BetterThanBrewery — Paper 26.2 / CustomGuiReworked 2.x
+# All durations are ticks unless a key explicitly ends with -seconds.
+settings:
+  locale: ru
+  autosave-ticks: 200
+  use-resource-pack-overlays: false
+  debug: false
+
+# Names here are rendered as a GUI title. Resource-pack font glyphs work normally.
+# title-offset is a number of non-breaking spaces prepended to the title.
+gui:
+  title-offset: 0
+  boiler-title: "&6⚗  &fБойлер"
+  distiller-title: "&b⚗  &fДистиллятор"
+  barrel-title: "&6▣  &fБочонок"
+  kettle-title: "&e☕  &fЧайник"
+  filler: minecraft:black_stained_glass_pane
+  water-icon: minecraft:potion_water
+  input-icon: minecraft:glass_bottle
+  fluid-slots: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
+
+# Recipe book. Replace minecraft:book with one or more custom IDs when desired.
+# Supported prefixes: itemsadder:, ia:, craftengine: and ce:.
+recipe-book:
+  enabled: true
+  items: ["minecraft:book"]
+  # Alternative single-item form when items is omitted: item: "itemsadder:my_recipe_book"
+  open-on-block: false
+  # Empty list shows every loaded recipe. Otherwise only these recipe IDs are shown.
+  recipes: []
+  gui:
+    title: "&6Книга рецептов"
+    detail-title: "&6Рецепт: &f{recipe}"
+    size: 54
+    filler: "minecraft:black_stained_glass_pane"
+    recipe-icon: "minecraft:potion"
+    recipe-slots: [10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43]
+    ingredient-slots: [28, 29, 30, 31, 32, 33, 34]
+    output-slot: 13
+    detail-info-slot: 22
+    page-slot: 4
+    previous-slot: 45
+    back-slot: 48
+    close-slot: 49
+    next-slot: 53
+    previous-icon: "minecraft:arrow"
+    back-icon: "minecraft:arrow"
+    next-icon: "minecraft:arrow"
+    close-icon: "minecraft:barrier"
+    recipe-lore:
+      - "&7Станция: &f{station}"
+      - "&7Время: &f{time} тиков"
+      - "&eНажмите, чтобы открыть рецепт"
+    detail-lore:
+      - "&7ID: &f{id}"
+      - "&7Станция: &f{station}"
+      - "&7Время: &f{time} тиков"
+      - "&7Идеальное время: &f{ideal-time} тиков"
+      - "&7Ингредиентов: &f{ingredients}"
+      - "&7Крепость: &f{alcohol}%"
+
+stations:
+  boiler:
+    enabled: true
+    gui: boiler
+    capacity: 10
+    water-capacity: 10
+    water-input-slot: 40
+    result-slot: 22
+    ingredient-slots: [10, 11, 12, 13, 14, 15]
+    byproduct-slots: [45, 46, 47]
+    # Replace examples with your real CraftEngine or ItemsAdder block IDs.
+    blocks: ["craftengine:betterthanbrewery_boiler", "itemsadder:betterthanbrewery_boiler"]
+  distiller:
+    enabled: true
+    gui: distiller
+    capacity: 10
+    fluid-input-slot: 40
+    fuel-slot: 42
+    result-slot: 22
+    byproduct-slots: [45, 46, 47]
+    blocks: ["craftengine:betterthanbrewery_distiller", "itemsadder:betterthanbrewery_distiller"]
+  barrel:
+    enabled: true
+    gui: barrel
+    capacity: 10
+    fluid-input-slot: 40
+    result-slot: 22
+    blocks: ["craftengine:betterthanbrewery_barrel", "itemsadder:betterthanbrewery_barrel"]
+  kettle:
+    enabled: true
+    gui: kettle
+    capacity: 4
+    water-capacity: 4
+    water-input-slot: 40
+    result-slot: 22
+    ingredient-slots: [10, 11, 12, 13]
+    blocks: ["craftengine:betterthanbrewery_kettle", "itemsadder:betterthanbrewery_kettle"]
+
+heat:
+  # The block directly below a kettle/distiller must be one of these.
+  materials: [FIRE, SOUL_FIRE, CAMPFIRE, SOUL_CAMPFIRE, MAGMA_BLOCK, LAVA]
+  custom-blocks: []
+  particle: FLAME
+  particle-count: 2
+  sound: BLOCK_FIRE_AMBIENT
+  sound-volume: 0.35
+  sound-pitch: 1.0
+
+effects:
+  sound-complete: BLOCK_BREWING_STAND_BREW
+  sound-take: ITEM_BOTTLE_FILL
+  sound-pour: ITEM_BOTTLE_EMPTY
+  sound-water: ITEM_BUCKET_FILL
+  particle-complete: END_ROD
+  particle-count: 12
+
+containers:
+  bottle:
+    empty: minecraft:glass_bottle
+    filled: minecraft:potion
+    units: 1
+    # Additional pairs may use CraftEngine or ItemsAdder ids.
+  cup:
+    empty: minecraft:bowl
+    filled: minecraft:potion
+    units: 1
+
+water:
+  source-items:
+    - minecraft:water_bucket
+    - minecraft:potion_water
+  bucket-units: 4
+  bottle-name: "&bВода"
+
+aging:
+  # One Minecraft week by default. Lower it on a test server if desired.
+  week-ticks: 12096000
+  update-ticks: 100
+  allow-early-take: true
+
+drunkenness:
+  enabled: true
+  decay-per-minute: 2.0
+  update-ticks: 20
+  max: 100
+  stages:
+    - min: 1
+      max: 19
+      actionbar: "&7Лёгкое опьянение &f{value}/100"
+      sway-chance: 0.08
+      sway-degrees: 0.7
+    - min: 20
+      max: 49
+      actionbar: "&eТепло разливается по телу &f{value}/100"
+      sway-chance: 0.16
+      sway-degrees: 1.2
+      effects:
+        - type: CONFUSION
+          duration: 60
+          amplifier: 0
+    - min: 50
+      max: 79
+      actionbar: "&6Мир слегка плывёт &f{value}/100"
+      sway-chance: 0.24
+      sway-degrees: 1.8
+      effects:
+        - type: CONFUSION
+          duration: 100
+          amplifier: 0
+        - type: SLOW
+          duration: 60
+          amplifier: 0
+    - min: 80
+      max: 100
+      actionbar: "&cВы уже очень пьяны &f{value}/100"
+      sway-chance: 0.35
+      sway-degrees: 2.4
+      effects:
+        - type: CONFUSION
+          duration: 140
+          amplifier: 1
+        - type: SLOW
+          duration: 80
+          amplifier: 1
+      overlay-command: "tellraw {player} {\"text\":\"\u26a0\",\"color\":\"dark_red\"}"
+      chat-replacements:
+        a: "а-а"
+        о: "о..."
+  # Optional client resource-pack overlay. It is only requested on a stage change.
+  resource-pack: ""
+  voice:
+    enabled: false
+    min-pitch: 0.82
+    max-pitch: 1.18
+    duration-ticks: 100
+    plugin-message-channel: betterthanbrewery:voice_pitch

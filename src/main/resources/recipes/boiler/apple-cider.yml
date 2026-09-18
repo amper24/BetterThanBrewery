@@ -1,0 +1,30 @@
+# Example recipe. Put your own files anywhere under plugins/BetterThanBrewery/recipes/.
+id: apple_cider
+station: boiler
+time: 600
+ideal-time: 600
+overcook-window: 300
+water: 3
+ingredients:
+  - item: minecraft:apple
+    amount: 2
+  - item: minecraft:sugar
+    amount: 1
+output:
+  id: apple_cider
+  name: "&6Яблочный сидр"
+  color: "#D88932"
+  alcohol: 8
+  food: 3
+  lore:
+    - "&7Пахнет осенью и дубовой корой."
+  effects:
+    - type: NIGHT_VISION
+      duration: 160
+      amplifier: 0
+byproducts:
+  - item: minecraft:charcoal
+    amount: 1
+    chance: 0.35
+sounds:
+  complete: BLOCK_BREWING_STAND_BREW

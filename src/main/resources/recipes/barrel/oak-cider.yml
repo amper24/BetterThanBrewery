@@ -1,0 +1,15 @@
+id: oak_cider
+station: barrel
+input-fluid: apple_cider
+weeks: 4
+formulas:
+  alcohol: "alcohol + age * 0.75"
+  food: "food + floor(age / 2)"
+output:
+  id: oak_cider
+  name: "&6Выдержанный сидр"
+  color: "#9C5428"
+  alcohol: 8
+  food: 3
+  lore:
+    - "&7Выдержка: &f{age} недель"

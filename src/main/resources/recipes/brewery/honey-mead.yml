@@ -1,0 +1,27 @@
+id: honey_mead
+station: boiler
+time: 800
+ideal-time: 800
+overcook-window: 400
+water: 3
+ingredients:
+  - item: minecraft:honey_bottle
+    amount: 2
+  - item: minecraft:sugar
+    amount: 1
+output:
+  id: honey_mead
+  name: "&6Медовуха"
+  color: "#F2B233"
+  alcohol: 9
+  food: 4
+  lore:
+    - "&7Тёплая и душистая."
+  effects:
+    - type: ABSORPTION
+      duration: 120
+      amplifier: 0
+byproducts:
+  - item: minecraft:glass_bottle
+    amount: 1
+    chance: 0.65

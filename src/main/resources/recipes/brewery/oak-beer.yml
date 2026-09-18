@@ -1,0 +1,16 @@
+id: oak_beer
+station: barrel
+input-fluid: wheat_beer
+weeks: 3
+formulas:
+  alcohol: "alcohol + age * 0.4"
+  food: "food + floor(age / 3)"
+output:
+  id: oak_beer
+  name: "&6Дубовое пиво"
+  color: "#9B5B25"
+  alcohol: 6
+  food: 3
+  lore:
+    - "&7Выдержано в дубовой бочке."
+    - "&7Возраст: &f{age} недель"
