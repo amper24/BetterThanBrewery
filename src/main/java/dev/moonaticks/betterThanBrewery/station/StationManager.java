@@ -22,6 +22,8 @@ import dev.moonaticks.customGuiReworked.api.event.GuiSlotClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.BlockFace;
@@ -459,16 +461,26 @@ public final class StationManager {
             Particle particle; try { particle = Particle.valueOf(plugin.getConfig().getString("heat.particle", "FLAME")); } catch (IllegalArgumentException ex) { particle = Particle.FLAME; }
             block.getWorld().spawnParticle(particle, block.clone().add(.5, .8, .5), plugin.getConfig().getInt("heat.particle-count", 2), .18, .18, .18, .01);
         }
-        try { block.getWorld().playSound(block, Sound.valueOf(plugin.getConfig().getString("heat.sound", "BLOCK_FIRE_AMBIENT")), (float) plugin.getConfig().getDouble("heat.sound-volume", .35), (float) plugin.getConfig().getDouble("heat.sound-pitch", 1)); } catch (IllegalArgumentException ignored) { }
+        block.getWorld().playSound(block, configuredSound("heat.sound", Sound.BLOCK_FIRE_AMBIENT),
+                (float) plugin.getConfig().getDouble("heat.sound-volume", .35),
+                (float) plugin.getConfig().getDouble("heat.sound-pitch", 1));
     }
     private void completeEffects(Location block) {
-        try { block.getWorld().playSound(block, Sound.valueOf(plugin.getConfig().getString("effects.sound-complete", "BLOCK_BREWING_STAND_BREW")), 1, 1); } catch (IllegalArgumentException ignored) { }
+        block.getWorld().playSound(block, configuredSound("effects.sound-complete", Sound.BLOCK_BREWING_STAND_BREW), 1, 1);
         try { Particle particle = Particle.valueOf(plugin.getConfig().getString("effects.particle-complete", "END_ROD")); block.getWorld().spawnParticle(particle, block.clone().add(.5, 1, .5), plugin.getConfig().getInt("effects.particle-count", 12), .25, .35, .25, .02); } catch (IllegalArgumentException ignored) { }
     }
 
     private void playInteraction(Player player, String path) {
-        try { player.playSound(player.getLocation(), Sound.valueOf(plugin.getConfig().getString(path, "ITEM_BOTTLE_EMPTY")), .8f, 1f); }
-        catch (IllegalArgumentException ignored) { }
+        player.playSound(player.getLocation(), configuredSound(path, Sound.ITEM_BOTTLE_EMPTY), .8f, 1f);
+    }
+
+    private Sound configuredSound(String path, Sound fallback) {
+        String raw = plugin.getConfig().getString(path, "");
+        if (raw == null || raw.isBlank()) return fallback;
+        NamespacedKey key = NamespacedKey.fromString(raw.contains(":") ? raw.toLowerCase(Locale.ROOT) : "minecraft:" + raw.toLowerCase(Locale.ROOT));
+        if (key == null) return fallback;
+        Sound resolved = Registry.SOUNDS.get(key);
+        return resolved == null ? fallback : resolved;
     }
     private boolean isWaterSource(ItemStack item) { for (String spec : plugin.getConfig().getStringList("water.source-items")) if (items.matches(item, spec)) return true; return false; }
     private boolean hasFinishedOutput(StationDefinition station, FunctionalBlockData data) { return getFluid(data) != null && (station.id().equals("boiler") || station.id().equals("kettle") || station.id().equals("distiller")); }
@@ -496,6 +508,6 @@ public final class StationManager {
             ItemStack rest = cursor.clone(); rest.setAmount(rest.getAmount() - 1); player.setItemOnCursor(rest.getAmount() <= 0 ? new ItemStack(Material.AIR) : rest);
             Map<Integer, ItemStack> overflow = player.getInventory().addItem(output); for (ItemStack left : overflow.values()) player.getWorld().dropItemNaturally(player.getLocation(), left);
         }
-        try { player.playSound(player.getLocation(), Sound.valueOf(plugin.getConfig().getString("effects.sound-take", "ITEM_BOTTLE_FILL")), 1, 1); } catch (IllegalArgumentException ignored) { }
+        player.playSound(player.getLocation(), configuredSound("effects.sound-take", Sound.ITEM_BOTTLE_FILL), 1, 1);
     }
 }
