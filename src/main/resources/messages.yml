@@ -6,5 +6,6 @@ unknown-command: "&e/betterbrewery reload &7— перечитать конфи�
 info: "&6BetterThanBrewery &fv{version} &7| рецептов: &f{recipes} &7| напитков: &f{drinks}"
 not-container: "&cНужна пустая тара из конфигурации."
 not-enough-fluid: "&cВ этой станции недостаточно жидкости."
+not-aged: "&eЖидкость ещё выдерживается. Нужно минимум &f{weeks} &eнед."
 not-ready: "&eНапиток ещё готовится — идеальное время: &f{time}"
 boiler-time: "&6Бойлер &7— прошло: &f{elapsed} тиков &7/ идеал: &f{ideal} &7(остановить можно сейчас тарой)"

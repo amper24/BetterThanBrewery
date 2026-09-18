@@ -16,7 +16,9 @@ public final class ColorUtil {
             Map.entry("lime", Color.LIME), Map.entry("maroon", Color.MAROON),
             Map.entry("navy", Color.NAVY), Map.entry("olive", Color.OLIVE),
             Map.entry("teal", Color.TEAL), Map.entry("silver", Color.SILVER),
-            Map.entry("gray", Color.GRAY));
+            Map.entry("gray", Color.GRAY), Map.entry("brown", Color.fromRGB(139, 69, 19)),
+            Map.entry("pink", Color.fromRGB(255, 105, 180)), Map.entry("beige", Color.fromRGB(245, 245, 220)),
+            Map.entry("gold", Color.fromRGB(255, 215, 0)));
 
     private ColorUtil() { }
 

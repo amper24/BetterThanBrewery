@@ -95,7 +95,13 @@ public final class DrinkService {
     private Prepared prepare(DrinkDefinition drink, int ageWeeks, double quality) {
         Map<String, Double> vars = new HashMap<>();
         vars.put("age", (double) Math.max(0, ageWeeks)); vars.put("weeks", (double) Math.max(0, ageWeeks));
-        vars.put("quality", quality); vars.put("alcohol", drink.alcohol()); vars.put("food", (double) drink.food());
+        vars.put("quality", quality);
+        vars.put("base_alcohol", drink.alcohol());
+        vars.put("base_food", (double) drink.food());
+        double qualityFactor = Math.max(.25, Math.min(1, .5 + quality / 200.0));
+        vars.put("potency", qualityFactor);
+        vars.put("alcohol", drink.alcohol() * qualityFactor);
+        vars.put("food", (double) drink.food());
         for (Map.Entry<String, String> entry : drink.formulas().entrySet()) {
             String key = entry.getKey().toLowerCase();
             double value = Formula.evaluate(entry.getValue(), vars, vars.getOrDefault(key, 0.0));
@@ -105,8 +111,11 @@ public final class DrinkService {
         int food = Math.max(0, (int) Math.round(vars.getOrDefault("food", (double) drink.food())));
         Map<String, String> placeholders = Map.of("age", Integer.toString(ageWeeks), "quality", Integer.toString((int) Math.round(quality)));
         String name = ColorUtil.replace(drink.name(), placeholders);
-        List<String> lore = new ArrayList<>(drink.lore());
-        if (ageWeeks > 0 && lore.stream().noneMatch(line -> line.contains("{age}"))) lore.add("&7Выдержка: &f" + ageWeeks + " недель");
+        List<String> lore = new ArrayList<>();
+        for (String line : drink.lore()) lore.add(ColorUtil.replace(line, Map.of(
+                "age", Integer.toString(ageWeeks), "quality", Integer.toString((int) Math.round(quality)),
+                "alcohol", Integer.toString((int) Math.round(alcohol)))));
+        if (ageWeeks > 0 && drink.lore().stream().noneMatch(line -> line.contains("{age}"))) lore.add("&7Выдержка: &f" + ageWeeks + " недель");
         return new Prepared(name, lore, alcohol, food, drink.itemSpec(), vars);
     }
     private static double clamp(double value, double min, double max) { return Math.max(min, Math.min(max, value)); }

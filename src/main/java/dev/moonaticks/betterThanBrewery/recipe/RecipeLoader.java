@@ -2,7 +2,6 @@ package dev.moonaticks.betterThanBrewery.recipe;
 
 import dev.moonaticks.betterThanBrewery.drink.DrinkDefinition;
 import dev.moonaticks.betterThanBrewery.drink.DrinkEffect;
-import dev.moonaticks.betterThanBrewery.item.ItemService;
 import dev.moonaticks.betterThanBrewery.util.ColorUtil;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -13,10 +12,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
 
 public final class RecipeLoader {
-    private final ItemService items;
-    public RecipeLoader(ItemService items) { this.items = items; }
+    private static final Set<String> STATIONS = Set.of("boiler", "distiller", "barrel", "kettle");
+    private final Logger logger;
+    public RecipeLoader(Logger logger) { this.logger = logger == null ? Logger.getLogger("BetterThanBrewery") : logger; }
 
     public RecipeRegistry load(File root) {
         RecipeRegistry registry = new RecipeRegistry();
@@ -32,7 +34,7 @@ public final class RecipeLoader {
             if (file.isDirectory()) loadFolder(file, registry);
             else if (file.getName().endsWith(".yml") || file.getName().endsWith(".yaml")) {
                 try { loadOne(file, registry); }
-                catch (RuntimeException ex) { System.err.println("Could not load recipe " + file + ": " + ex.getMessage()); }
+                catch (RuntimeException ex) { logger.warning("Не удалось загрузить рецепт " + file.getName() + ": " + ex.getMessage()); }
             }
         }
     }
@@ -41,15 +43,20 @@ public final class RecipeLoader {
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         String id = yaml.getString("id", file.getName().replaceFirst("\\.(yaml|yml)$", "")).toLowerCase(Locale.ROOT);
         String station = yaml.getString("station", inferStation(file)).toLowerCase(Locale.ROOT);
+        if (id.isBlank()) throw new IllegalArgumentException("id не может быть пустым");
+        if (!STATIONS.contains(station)) throw new IllegalArgumentException("неизвестная station: " + station);
         ConfigurationSection output = yaml.getConfigurationSection("output");
-        DrinkDefinition drink = drink(id, output == null ? yaml : output, yaml.getConfigurationSection("formulas"));
+        if (output == null || !output.contains("name") || !output.contains("color")) {
+            throw new IllegalArgumentException("output.name и output.color обязательны");
+        }
+        DrinkDefinition drink = drink(id, output, yaml.getConfigurationSection("formulas"));
         List<Ingredient> ingredients = ingredients(yaml, station);
         int time = ticks(yaml, "time", 0);
         if (yaml.contains("time-seconds")) time = Math.max(0, yaml.getInt("time-seconds") * 20);
         int ideal = ticks(yaml, "ideal-time", time);
         int max = ticks(yaml, "max-time", ideal + Math.max(1, yaml.getInt("overcook-window", Math.max(1, ideal / 2))));
         String inputFluid = yaml.getString("input-fluid", yaml.getString("input.fluid", ""));
-        String outputFluid = output == null ? id : output.getString("fluid", output.getString("id", id));
+        String outputFluid = output.getString("fluid", output.getString("id", id));
         ConfigurationSection fuel = yaml.getConfigurationSection("fuel");
         String fuelItem = fuel == null ? "" : fuel.getString("item", "");
         int fuelAmount = fuel == null ? 0 : fuel.getInt("amount", 1);
@@ -63,7 +70,10 @@ public final class RecipeLoader {
         RecipeDefinition recipe = new RecipeDefinition(id, station, ingredients,
                 yaml.getInt("water", yaml.getInt("water-units", 0)), time, ideal, max,
                 inputFluid, outputFluid, weeks, fuelItem, fuelAmount, drink, byproducts, formulas);
-        registry.add(recipe);
+        if (ingredients.isEmpty() && (station.equals("boiler") || station.equals("kettle"))) {
+            throw new IllegalArgumentException("для " + station + " нужны ingredients");
+        }
+        if (registry.add(recipe) != null) logger.warning("Рецепт " + id + " был переопределён файлом " + file.getName());
     }
 
     private DrinkDefinition drink(String id, ConfigurationSection section, ConfigurationSection recipeFormulas) {

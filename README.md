@@ -13,7 +13,8 @@
 - HEX и именованные цвета, hunger, эффекты, lore, команды Bukkit/CommandAPI-совместимые команды и Denizen script hooks.
 - Выдержка в неделях и безопасные формулы: `+`, `-`, `*`, `/`, `%`, `^`, скобки, `min`, `max`, `clamp`, `abs`, `floor`, `ceil`, `round`, `sqrt`, `if`. Формулы не исполняют Java/команды.
 - Опьянение 0–100: спад, стадии, эффекты, плавный случайный микросдвиг, чат-замены, actionbar, optional resource-pack overlay и plugin-message hook для pitch-аддона Simple Voice Chat.
-- Локальный title через CustomGuiReworked, `gui.title-offset` для ресурс-пак шрифтов, анимация жидкостей через local design, частицы и звуки.
+- Локальный title через CustomGuiReworked, `gui.title-offset` для ресурс-пак шрифтов, анимация уровня жидкости через local design, цветные индикаторы качества, подсказки прямо в слотах воды/переливания, частицы и звуки.
+- Профессиональный reload: открытые станционные GUI безопасно закрываются, рецепты валидируются, ошибки отдельных файлов не ломают остальные рецепты.
 
 ## Установка
 
@@ -21,6 +22,8 @@
 2. Положить BetterThanBrewery в `plugins/` и один раз запустить сервер.
 3. В `plugins/BetterThanBrewery/config.yml` заменить примерные `stations.*.blocks` на реальные ID блоков.
 4. Редактировать рецепты в `plugins/BetterThanBrewery/recipes/`; `/betterbrewery reload` перечитывает их.
+
+В каждом рецепте `output.name` и `output.color` обязательны; остальные поля напитка можно не указывать. `output.item` позволяет заменить Potion на CraftEngine/ItemsAdder предмет.
 
 ## Формат формулы выдержки
 
@@ -33,7 +36,7 @@ formulas:
   food: "food + floor(age / 2)"
 ```
 
-`age`, `weeks`, `alcohol`, `food`, `quality` доступны в формулах. Для эффектов доступны `duration-formula` и `amplifier-formula`.
+`age`, `weeks`, `alcohol`, `base_alcohol`, `food`, `base_food`, `quality` и `potency` доступны в формулах. Качество автоматически влияет на базовую крепость через `potency`, а формулы могут изменить это поведение. Для эффектов доступны `duration-formula` и `amplifier-formula`.
 
 ## Важное про CustomGuiReworked
 

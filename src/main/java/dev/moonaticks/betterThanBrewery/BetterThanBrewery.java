@@ -32,21 +32,30 @@ public final class BetterThanBrewery extends JavaPlugin {
         }
         configs = new ConfigManager(this); configs.load(); lang = new Lang(configs);
         items = new ItemService(this); containers = new ContainerService(items); containers.load(getConfig());
-        recipeLoader = new RecipeLoader(items); recipes = recipeLoader.load(configs.recipesFolder());
+        recipeLoader = new RecipeLoader(getLogger()); recipes = recipeLoader.load(configs.recipesFolder());
         drinks = new DrinkService(this, items, containers); drinks.setRegistry(recipes);
         stations = new StationManager(this, items, containers, drinks, lang); stations.setRecipes(recipes); stations.registerAll();
         drunkenness = new DrunkennessManager(this); drunkenness.load(); drunkenness.start();
         Bukkit.getPluginManager().registerEvents(new DrinkListener(drinks, drunkenness), this);
         Bukkit.getPluginManager().registerEvents(drunkenness, this);
-        if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, recipeLoader, stations); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
+        if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
         Bukkit.getScheduler().runTaskTimer(this, () -> CustomGuiAPI.getFunctionalBlocks().tickDataSave(), 200, Math.max(40, getConfig().getInt("settings.autosave-ticks", 200)));
         getLogger().info("BetterThanBrewery enabled: " + recipes.size() + " recipes, " + recipes.drinkCount() + " drinks, " + stations.stationCount() + " stations.");
     }
 
     public void reloadPlugin() {
-        configs.reload(); containers.load(getConfig()); recipes = recipeLoader.load(configs.recipesFolder()); drinks.setRegistry(recipes);
-        drunkenness.load(); stations.setRecipes(recipes); stations.registerAll();
+        stations.closeOpenGuis();
+        configs.reload();
+        containers.load(getConfig());
+        recipes = recipeLoader.load(configs.recipesFolder());
+        drinks.setRegistry(recipes);
+        drunkenness.load();
+        stations.setRecipes(recipes);
+        stations.registerAll();
     }
-    @Override public void onDisable() { if (CustomGuiAPI.isInitialized()) CustomGuiAPI.getFunctionalBlocks().tickDataSave(); }
+    @Override public void onDisable() {
+        if (stations != null && CustomGuiAPI.isInitialized()) stations.closeOpenGuis();
+        if (CustomGuiAPI.isInitialized()) CustomGuiAPI.getFunctionalBlocks().tickDataSave();
+    }
     public RecipeRegistry recipes() { return recipes; }
 }

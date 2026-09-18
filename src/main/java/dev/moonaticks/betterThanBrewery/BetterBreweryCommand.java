@@ -1,14 +1,12 @@
 package dev.moonaticks.betterThanBrewery;
 
 import dev.moonaticks.betterThanBrewery.config.Lang;
-import dev.moonaticks.betterThanBrewery.recipe.RecipeLoader;
 import dev.moonaticks.betterThanBrewery.recipe.RecipeRegistry;
 import dev.moonaticks.betterThanBrewery.station.StationManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Locale;
@@ -16,9 +14,8 @@ import java.util.Locale;
 public final class BetterBreweryCommand implements CommandExecutor, TabCompleter {
     private final BetterThanBrewery plugin;
     private final Lang lang;
-    private final RecipeLoader loader;
     private final StationManager stations;
-    public BetterBreweryCommand(BetterThanBrewery plugin, Lang lang, RecipeLoader loader, StationManager stations) { this.plugin = plugin; this.lang = lang; this.loader = loader; this.stations = stations; }
+    public BetterBreweryCommand(BetterThanBrewery plugin, Lang lang, StationManager stations) { this.plugin = plugin; this.lang = lang; this.stations = stations; }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("betterthanbrewery.admin")) { lang.send(sender, "no-permission"); return true; }
         if (args.length == 0) { lang.send(sender, "unknown-command"); return true; }

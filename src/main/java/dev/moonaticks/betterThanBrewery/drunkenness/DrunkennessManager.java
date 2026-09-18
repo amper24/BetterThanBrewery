@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /** Persistent 0..100 intoxication with configurable staged feedback. */
@@ -36,6 +37,7 @@ public final class DrunkennessManager implements Listener {
     private int interval;
     private int ticks;
     private final Map<java.util.UUID, Integer> lastStage = new HashMap<>();
+    private final Map<java.util.UUID, Double> levels = new ConcurrentHashMap<>();
     private String pitchChannel;
 
     public DrunkennessManager(BetterThanBrewery plugin) { this.plugin = plugin; this.key = new NamespacedKey(plugin, "drunkenness"); }
@@ -62,9 +64,15 @@ public final class DrunkennessManager implements Listener {
     }
 
     public void start() { ticks = 0; Bukkit.getScheduler().runTaskTimer(plugin, () -> { ticks += interval; for (Player player : Bukkit.getOnlinePlayers()) tick(player); }, interval, interval); }
-    public double value(Player player) { return player.getPersistentDataContainer().getOrDefault(key, PersistentDataType.DOUBLE, 0.0); }
+    public double value(Player player) {
+        return levels.computeIfAbsent(player.getUniqueId(), ignored -> player.getPersistentDataContainer().getOrDefault(key, PersistentDataType.DOUBLE, 0.0));
+    }
     public void add(Player player, double amount) { set(player, value(player) + amount); }
-    public void set(Player player, double amount) { player.getPersistentDataContainer().set(key, PersistentDataType.DOUBLE, Math.max(0, Math.min(max, amount))); }
+    public void set(Player player, double amount) {
+        double clamped = Math.max(0, Math.min(max, amount));
+        levels.put(player.getUniqueId(), clamped);
+        player.getPersistentDataContainer().set(key, PersistentDataType.DOUBLE, clamped);
+    }
 
     private void tick(Player player) {
         if (!plugin.getConfig().getBoolean("drunkenness.enabled", true)) return;
@@ -114,7 +122,10 @@ public final class DrunkennessManager implements Listener {
         return result;
     }
     @EventHandler public void onChat(AsyncPlayerChatEvent event) { event.setMessage(replaceChat(event.getPlayer(), event.getMessage())); }
-    @EventHandler public void onQuit(PlayerQuitEvent event) { lastStage.remove(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onQuit(PlayerQuitEvent event) {
+        lastStage.remove(event.getPlayer().getUniqueId());
+        levels.remove(event.getPlayer().getUniqueId());
+    }
 
     private static int number(Object value, int fallback) { try { return value == null ? fallback : Integer.parseInt(String.valueOf(value)); } catch (NumberFormatException e) { return fallback; } }
     private static double decimal(Object value, double fallback) { try { return value == null ? fallback : Double.parseDouble(String.valueOf(value)); } catch (NumberFormatException e) { return fallback; } }

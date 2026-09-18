@@ -82,6 +82,18 @@ public final class ItemService {
         return item;
     }
 
+    public ItemStack appendLore(ItemStack original, List<String> additions) {
+        if (original == null || original.getType().isAir() || additions == null || additions.isEmpty()) return original;
+        ItemStack item = original.clone();
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item;
+        List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
+        for (String line : additions) lore.add(LegacyComponentSerializer.legacySection().deserialize(ColorUtil.color(line)));
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     public void mark(ItemStack item, String key) {
         if (item == null || item.getType().isAir() || key == null) return;
         ItemMeta meta = item.getItemMeta();
