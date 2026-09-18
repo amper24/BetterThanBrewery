@@ -3,6 +3,7 @@ package dev.moonaticks.betterThanBrewery.recipe;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -34,7 +35,7 @@ class RecipeResourceTest {
             "recipes/brewery/coffee.yml");
 
     @Test
-    void bundledRecipesHaveAStationAndDrinkIdentity() {
+    void bundledRecipesHaveAStationAndDrinkIdentity() throws IOException {
         for (String path : RECIPES) {
             try (InputStream stream = getClass().getClassLoader().getResourceAsStream(path)) {
                 assertNotNull(stream, "Missing bundled recipe: " + path);
