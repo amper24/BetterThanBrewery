@@ -1,0 +1,21 @@
+id: mint_tea
+station: kettle
+time: 240
+water: 2
+ingredients:
+  - item: minecraft:short_grass
+    amount: 2
+  - item: minecraft:sugar
+    amount: 1
+output:
+  id: mint_tea
+  name: "&aМятный чай"
+  color: "#76C893"
+  alcohol: 0
+  food: 3
+  lore:
+    - "&7Свежесть и спокойствие в одной чашке."
+  effects:
+    - type: REGENERATION
+      duration: 80
+      amplifier: 0

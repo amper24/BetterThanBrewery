@@ -1,0 +1,36 @@
+name: Build and test
+
+on:
+  push:
+    branches: [ main, 'arena/**' ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+      - name: Test and build
+        run: ./gradlew clean test build --no-daemon --stacktrace --console=plain
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            build/test-results/test/**
+            build/reports/tests/test/**
+          if-no-files-found: ignore

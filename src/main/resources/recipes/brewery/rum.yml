@@ -1,0 +1,19 @@
+id: rum
+station: distiller
+time: 1100
+input-fluid: honey_mead
+fuel:
+  item: minecraft:coal
+  amount: 1
+output:
+  id: rum
+  name: "&6Ром"
+  color: "#A86528"
+  alcohol: 35
+  food: 1
+  lore:
+    - "&7Сладкий тростниковый характер."
+byproducts:
+  - item: minecraft:sugar
+    amount: 1
+    chance: 0.35

@@ -1,0 +1,22 @@
+id: grain_vodka
+station: distiller
+time: 950
+input-fluid: wheat_beer
+fuel:
+  item: minecraft:coal
+  amount: 1
+output:
+  id: grain_vodka
+  name: "&fЗерновая водка"
+  color: "#DCEBFF"
+  alcohol: 28
+  food: 1
+  lore:
+    - "&7Прозрачная, резкая и крепкая."
+byproducts:
+  - item: minecraft:charcoal
+    amount: 1
+    chance: 0.35
+  - item: minecraft:wheat_seeds
+    amount: 1
+    chance: 0.2

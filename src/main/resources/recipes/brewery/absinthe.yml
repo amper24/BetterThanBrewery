@@ -1,0 +1,23 @@
+id: absinthe
+station: distiller
+time: 1150
+input-fluid: mint_tea
+fuel:
+  item: minecraft:coal
+  amount: 1
+output:
+  id: absinthe
+  name: "&2Абсент"
+  color: "#8FB339"
+  alcohol: 40
+  food: 1
+  lore:
+    - "&7Травяной аромат и опасно крепкий характер."
+  effects:
+    - type: NIGHT_VISION
+      duration: 160
+      amplifier: 0
+byproducts:
+  - item: minecraft:short_grass
+    amount: 1
+    chance: 0.45

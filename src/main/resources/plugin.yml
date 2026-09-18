@@ -1,4 +1,24 @@
 name: BetterThanBrewery
-version: '1.0'
+version: '${version}'
 main: dev.moonaticks.betterThanBrewery.BetterThanBrewery
-api-version: '1.21'
+api-version: '26.2'
+author: amper24
+description: Configurable brewing, distilling, ageing and tea system for Paper 26.2.
+website: https://github.com/amper24/BetterThanBrewery
+softdepend:
+  - CustomGuiReworked
+  - CraftEngine
+  - ItemsAdder
+  - Denizen
+  - voicechat
+commands:
+  betterbrewery:
+    description: BetterThanBrewery administration
+    aliases: [brewery, btb]
+    usage: /betterbrewery <reload|info>
+    permission: betterthanbrewery.admin
+permissions:
+  betterthanbrewery.admin:
+    default: op
+  betterthanbrewery.use:
+    default: true
