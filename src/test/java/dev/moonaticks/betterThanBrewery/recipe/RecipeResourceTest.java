@@ -27,10 +27,10 @@ class RecipeResourceTest {
             "recipes/brewery/absinthe.yml",
             "recipes/brewery/oak-beer.yml",
             "recipes/brewery/oak-wine.yml",
-            "recipes/brewery/black-tea.yml",
-            "recipes/brewery/mint-tea.yml",
-            "recipes/brewery/berry-tea.yml",
-            "recipes/brewery/coffee.yml");
+            "recipes/kettle/black-tea.yml",
+            "recipes/kettle/mint-tea.yml",
+            "recipes/kettle/berry-tea.yml",
+            "recipes/kettle/coffee.yml");
 
     private static final Pattern ID = Pattern.compile("(?m)^id:\\s*[A-Za-z0-9_-]+\\s*$");
     private static final Pattern STATION = Pattern.compile("(?m)^station:\\s*(boiler|distiller|barrel|kettle)\\s*$");
