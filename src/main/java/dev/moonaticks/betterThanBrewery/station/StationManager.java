@@ -140,7 +140,7 @@ public final class StationManager {
                 data.setInt(PROGRESS, 0);
             }
         }
-        if (station.ingredientSlots().contains(slot) || slot == station.waterInputSlot()
+        if (station.ingredientSlots().contains(slot) || slot == station.waterSlot()
                 || slot == station.fluidInputSlot() || slot == station.fuelSlot()) updateWorking(station, blockId, block);
     }
 
@@ -285,7 +285,7 @@ public final class StationManager {
         }
         boolean fluidSlot = fluidSlots.contains(slot) || slot == station.resultSlot();
         if (station.id().equals("boiler") || station.id().equals("kettle")) {
-            if (slot == station.waterInputSlot()) { handleWater(station, blockId, block, player, event); return; }
+            if (slot == station.waterSlot()) { handleWater(station, blockId, block, player, event); return; }
         }
         if ((station.id().equals("distiller") || station.id().equals("barrel")) && slot == station.fluidInputSlot()) {
             if (acceptFluid(station, blockId, block, player, event)) return;
@@ -384,7 +384,7 @@ public final class StationManager {
         if (station.id().equals("boiler") || station.id().equals("kettle")) {
             ItemStack waterIcon = items.create(plugin.getConfig().getString("gui.water-icon", "minecraft:potion_water"));
             waterIcon = items.appendLore(waterIcon, List.of("&7Нажмите с ведром, чтобы наполнить.", "&7Пустая тара заберёт воду по единицам."));
-            CustomGuiAPI.setLocalDesign(viewer, block, station.waterInputSlot(), waterIcon);
+            CustomGuiAPI.setLocalDesign(viewer, block, station.waterSlot(), waterIcon);
         } else {
             ItemStack inputIcon = items.create(plugin.getConfig().getString("gui.input-icon", "minecraft:glass_bottle"));
             inputIcon = items.appendLore(inputIcon, List.of("&7Перелейте сюда готовую жидкость.", "&8Она будет принята только в пустом состоянии."));
