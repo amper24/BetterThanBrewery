@@ -1,0 +1,24 @@
+id: coffee
+station: kettle
+time: 220
+water: 2
+ingredients:
+  - item: minecraft:cocoa_beans
+    amount: 2
+  - item: minecraft:sugar
+    amount: 1
+output:
+  id: coffee
+  name: "&8Кофе"
+  color: "#4B2E20"
+  alcohol: 0
+  food: 3
+  lore:
+    - "&7Горький, бодрящий и очень простой."
+  effects:
+    - type: SPEED
+      duration: 240
+      amplifier: 0
+    - type: HASTE
+      duration: 160
+      amplifier: 0

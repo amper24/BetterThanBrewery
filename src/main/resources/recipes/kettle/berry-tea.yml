@@ -1,0 +1,21 @@
+id: berry_tea
+station: kettle
+time: 280
+water: 2
+ingredients:
+  - item: minecraft:sweet_berries
+    amount: 2
+  - item: minecraft:rose_bush
+    amount: 1
+output:
+  id: berry_tea
+  name: "&dЯгодный чай"
+  color: "#C04B9A"
+  alcohol: 0
+  food: 4
+  lore:
+    - "&7Яркий цвет и лёгкая кислинка."
+  effects:
+    - type: ABSORPTION
+      duration: 80
+      amplifier: 0

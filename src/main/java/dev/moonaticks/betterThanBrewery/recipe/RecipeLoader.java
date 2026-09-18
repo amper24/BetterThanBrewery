@@ -49,14 +49,15 @@ public final class RecipeLoader {
         if (output == null || !output.contains("name") || !output.contains("color")) {
             throw new IllegalArgumentException("output.name и output.color обязательны");
         }
-        DrinkDefinition drink = drink(id, output, yaml.getConfigurationSection("formulas"));
+        String drinkId = output.getString("id", id).toLowerCase(Locale.ROOT);
+        DrinkDefinition drink = drink(drinkId, output, yaml.getConfigurationSection("formulas"));
         List<Ingredient> ingredients = ingredients(yaml, station);
         int time = ticks(yaml, "time", 0);
         if (yaml.contains("time-seconds")) time = Math.max(0, yaml.getInt("time-seconds") * 20);
         int ideal = ticks(yaml, "ideal-time", time);
         int max = ticks(yaml, "max-time", ideal + Math.max(1, yaml.getInt("overcook-window", Math.max(1, ideal / 2))));
         String inputFluid = yaml.getString("input-fluid", yaml.getString("input.fluid", ""));
-        String outputFluid = output.getString("fluid", output.getString("id", id));
+        String outputFluid = output.getString("fluid", drink.id());
         ConfigurationSection fuel = yaml.getConfigurationSection("fuel");
         String fuelItem = fuel == null ? "" : fuel.getString("item", "");
         int fuelAmount = fuel == null ? 0 : fuel.getInt("amount", 1);

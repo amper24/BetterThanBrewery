@@ -19,7 +19,15 @@ public final class ConfigManager {
         copyIfMissing("messages.yml");
         for (String resource : new String[]{
                 "recipes/boiler/apple-cider.yml", "recipes/distiller/brandy.yml",
-                "recipes/barrel/oak-cider.yml", "recipes/kettle/herbal-tea.yml"}) copyIfMissing(resource);
+                "recipes/barrel/oak-cider.yml", "recipes/kettle/herbal-tea.yml",
+                "recipes/brewery/wheat-beer.yml", "recipes/brewery/berry-wine.yml",
+                "recipes/brewery/honey-mead.yml", "recipes/brewery/grain-vodka.yml",
+                "recipes/brewery/berry-spirit.yml", "recipes/brewery/whiskey.yml",
+                "recipes/brewery/rum.yml", "recipes/brewery/absinthe.yml",
+                "recipes/brewery/oak-beer.yml", "recipes/brewery/oak-wine.yml",
+                "recipes/brewery/black-tea.yml",
+                "recipes/brewery/mint-tea.yml", "recipes/brewery/berry-tea.yml",
+                "recipes/brewery/coffee.yml"}) copyIfMissing(resource);
         messagesFile = new File(plugin.getDataFolder(), "messages.yml");
         messages = YamlConfiguration.loadConfiguration(messagesFile);
     }
