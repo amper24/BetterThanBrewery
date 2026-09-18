@@ -17,6 +17,8 @@ gui:
   filler: minecraft:black_stained_glass_pane
   water-icon: minecraft:potion_water
   input-icon: minecraft:glass_bottle
+  # Stored only as a safe visual in fluid CONTAINER slots; it has no drink tag.
+  fluid-icon: minecraft:potion
   fluid-slots: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
 
 # Recipe book. A custom ID has two prefixes: provider and namespace.
@@ -68,18 +70,17 @@ stations:
     capacity: 10
     water-capacity: 10
     water-input-slot: 40
-    result-slot: 22
     ingredient-slots: [10, 11, 12, 13, 14, 15]
-    byproduct-slots: [45, 46, 47]
     # Optional station-specific filler overrides gui.filler. It accepts
     # minecraft:item, itemsadder:namespace:item or craftengine:namespace:item.
     # filler: "itemsadder:brewery:boiler_filler"
     skeleton:
-      # Every slot not listed here stays DESIGN and displays the filler.
+      # Fluid columns are persistent CONTAINER slots with custom blocked behavior.
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
+      # Every other slot not listed here stays DESIGN and displays the filler.
       craft: [10, 11, 12, 13, 14, 15]
       fuel: []
       container: []
-      result: [45, 46, 47]
     # Replace examples with your real CraftEngine or ItemsAdder block IDs.
     blocks: ["craftengine:betterthanbrewery_boiler", "itemsadder:betterthanbrewery_boiler"]
   distiller:
@@ -88,25 +89,22 @@ stations:
     capacity: 10
     fluid-input-slot: 40
     fuel-slot: 42
-    result-slot: 22
-    byproduct-slots: [45, 46, 47]
     skeleton:
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       craft: []
       fuel: [42]
       container: []
-      result: [45, 46, 47]
     blocks: ["craftengine:betterthanbrewery_distiller", "itemsadder:betterthanbrewery_distiller"]
   barrel:
     enabled: true
     gui: barrel
     capacity: 10
     fluid-input-slot: 40
-    result-slot: 22
     skeleton:
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       craft: []
       fuel: []
       container: []
-      result: []
     blocks: ["craftengine:betterthanbrewery_barrel", "itemsadder:betterthanbrewery_barrel"]
   kettle:
     enabled: true
@@ -114,13 +112,12 @@ stations:
     capacity: 4
     water-capacity: 4
     water-input-slot: 40
-    result-slot: 22
     ingredient-slots: [10, 11, 12, 13]
     skeleton:
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       craft: [10, 11, 12, 13]
       fuel: []
       container: []
-      result: []
     blocks: ["craftengine:betterthanbrewery_kettle", "itemsadder:betterthanbrewery_kettle"]
 
 heat:

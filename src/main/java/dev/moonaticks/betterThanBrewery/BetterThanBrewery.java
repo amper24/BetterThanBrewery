@@ -40,6 +40,7 @@ public final class BetterThanBrewery extends JavaPlugin {
         recipeBook = new RecipeBookManager(this::getConfig, items); recipeBook.setRecipes(recipes); recipeBook.registerAll();
         drunkenness = new DrunkennessManager(this); drunkenness.load(); drunkenness.start();
         Bukkit.getPluginManager().registerEvents(recipeBook, this);
+        Bukkit.getPluginManager().registerEvents(stations, this);
         Bukkit.getPluginManager().registerEvents(new DrinkListener(drinks, drunkenness), this);
         Bukkit.getPluginManager().registerEvents(drunkenness, this);
         if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }

@@ -18,6 +18,7 @@ import dev.moonaticks.customGuiReworked.api.StorageType;
 import dev.moonaticks.customGuiReworked.storage.StorageKey;
 import dev.moonaticks.customGuiReworked.api.functional.FunctionalBlock;
 import dev.moonaticks.customGuiReworked.api.functional.FunctionalBlockData;
+import dev.moonaticks.customGuiReworked.api.event.GuiDragEvent;
 import dev.moonaticks.customGuiReworked.api.event.GuiSlotClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -31,6 +32,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -43,7 +46,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /** Station state lives in CustomGuiReworked's persistent block storage, not in viewers. */
-public final class StationManager {
+public final class StationManager implements org.bukkit.event.Listener {
     private static final String FLUID = "fluid";
     private static final String LEVEL = "fluid-level";
     private static final String WATER = "water";
@@ -51,6 +54,7 @@ public final class StationManager {
     private static final String QUALITY = "quality";
     private static final String PROGRESS = "progress";
     private static final String RECIPE = "recipe";
+    private static final String FLUID_RENDER = "fluid-render";
 
     private final BetterThanBrewery plugin;
     private final ItemService items;
@@ -60,7 +64,6 @@ public final class StationManager {
     private final Map<String, StationDefinition> stations = new HashMap<>();
     private final Map<String, StationDefinition> byGui = new HashMap<>();
     private RecipeRegistry recipes = new RecipeRegistry();
-    private List<Integer> fluidSlots = List.of(7, 8, 16, 17, 25, 26, 34, 35, 43, 44);
     private ItemStack filler;
 
     public StationManager(BetterThanBrewery plugin, ItemService items, ContainerService containers, DrinkService drinks, Lang lang) {
@@ -68,6 +71,32 @@ public final class StationManager {
     }
     public void setRecipes(RecipeRegistry recipes) { this.recipes = recipes; }
     public int stationCount() { return stations.size(); }
+
+    @org.bukkit.event.EventHandler
+    public void onFluidDrag(GuiDragEvent event) {
+        StationDefinition station = byGui.get(event.getGui().name());
+        if (station == null) return;
+        for (int slot : event.getTopSlots()) {
+            if (station.fluidSlots().contains(slot)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = true)
+    public void onStationInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        Gui open = CustomGuiAPI.getOpenGui(player);
+        if (open == null || !byGui.containsKey(open.name())) return;
+        // A shift-click from the player inventory can target any CONTAINER
+        // slot. Block that route so a fluid column cannot become a generic
+        // item container. Top fluid clicks are handled by FunctionalBlock.
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                && event.getRawSlot() >= event.getView().getTopInventory().getSize()) {
+            event.setCancelled(true);
+        }
+    }
 
     public void closeOpenGuis() {
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -83,8 +112,8 @@ public final class StationManager {
         }
         stations.clear(); byGui.clear();
         FileConfiguration config = plugin.getConfig();
-        fluidSlots = config.getIntegerList("gui.fluid-slots");
-        if (fluidSlots.isEmpty()) fluidSlots = List.of(7, 8, 16, 17, 25, 26, 34, 35, 43, 44);
+        List<Integer> defaultFluidSlots = config.getIntegerList("gui.fluid-slots");
+        if (defaultFluidSlots.isEmpty()) defaultFluidSlots = List.of(7, 8, 16, 17, 25, 26, 34, 35, 43, 44);
         filler = items.create(config.getString("gui.filler", "minecraft:black_stained_glass_pane"));
         if (filler.getType().isAir()) filler = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ConfigurationSection section = config.getConfigurationSection("stations");
@@ -96,9 +125,9 @@ public final class StationManager {
                     config.getString(path + ".gui", id).toLowerCase(Locale.ROOT),
                     Math.max(1, config.getInt(path + ".capacity", 10)), Math.max(0, config.getInt(path + ".water-capacity", 10)),
                     config.getInt(path + ".water-input-slot", 40), config.getInt(path + ".fluid-input-slot", 40),
-                    config.getInt(path + ".fuel-slot", 42), config.getInt(path + ".result-slot", 22),
+                    config.getInt(path + ".fuel-slot", 42),
+                    skeletonSlots(config, path, "fluid", defaultFluidSlots),
                     skeletonSlots(config, path, "craft", config.getIntegerList(path + ".ingredient-slots")),
-                    skeletonSlots(config, path, "result", config.getIntegerList(path + ".byproduct-slots")),
                     config.getStringList(path + ".blocks"));
             stations.put(station.id(), station); byGui.put(station.gui(), station);
             registerGui(station);
@@ -116,19 +145,23 @@ public final class StationManager {
         dev.moonaticks.customGuiReworked.api.GuiBuilder builder = CustomGuiAPI.builder(station.gui())
                 .title(title).size(54).storage(StorageType.BLOCK);
         for (int slot = 0; slot < 54; slot++) builder.design(slot, stationFiller);
+        // Fluid columns are real persistent CONTAINER slots, but all player
+        // interaction with them is intercepted by handleClick/onFluidDrag.
+        for (int slot : station.fluidSlots()) {
+            if (slot >= 0 && slot < 54) builder.slot(slot, SlotType.CONTAINER);
+        }
         ConfigurationSection skeleton = plugin.getConfig().getConfigurationSection("stations." + station.id() + ".skeleton");
         if (skeleton == null) {
             for (int slot : station.ingredientSlots()) builder.slot(slot, SlotType.CRAFT);
             if (station.id().equals("distiller")) builder.slot(station.fuelSlot(), SlotType.FUEL);
-            for (int slot : station.byproductSlots()) builder.slot(slot, SlotType.RESULT);
         } else {
             applySkeleton(builder, skeleton, "craft", SlotType.CRAFT);
             applySkeleton(builder, skeleton, "fuel", SlotType.FUEL);
             applySkeleton(builder, skeleton, "container", SlotType.CONTAINER);
-            applySkeleton(builder, skeleton, "result", SlotType.RESULT);
             // Unlisted slots deliberately remain DESIGN and keep the filler.
         }
-        // Input/result/fluid slots intentionally stay DESIGN unless the configured skeleton changes them.
+        // Station controls remain custom-handled by FunctionalBlock; fluid
+        // columns are persistent CONTAINER slots with blocked interaction.
         CustomGuiAPI.registerGui(builder.build(), true);
     }
 
@@ -221,11 +254,11 @@ public final class StationManager {
         if (station.id().equals("kettle")) {
             if (!matchesIngredients(station, blockId, block, recipe) || getInt(data, WATER, 0) < recipe.water()) { CustomGuiAPI.setWorking(blockId, block, false); return; }
             consumeIngredients(station, blockId, block, recipe); data.setInt(WATER, getInt(data, WATER, 0) - recipe.water());
-            setFluid(data, recipe.outputFluid(), station.capacity(), 100, 0); produceByproducts(station, blockId, block, recipe); completeEffects(block);
+            setFluid(data, recipe.outputFluid(), station.capacity(), 100, 0); produceByproducts(block, recipe); completeEffects(block);
         } else {
             if (getFluid(data) == null || !recipe.inputFluid().equalsIgnoreCase(getFluid(data)) || !hasFuel(station, blockId, block, recipe)) { CustomGuiAPI.setWorking(blockId, block, false); return; }
             consumeFuel(station, blockId, block, recipe); setFluid(data, recipe.outputFluid(), Math.min(station.capacity(), getLevel(data)), 100, getInt(data, AGE, 0));
-            produceByproducts(station, blockId, block, recipe); completeEffects(block);
+            produceByproducts(block, recipe); completeEffects(block);
         }
         data.setInt(PROGRESS, 0); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false);
     }
@@ -236,7 +269,7 @@ public final class StationManager {
         double distance = Math.abs(progress - recipe.idealTime());
         double quality = Math.max(0, 100 - distance * 100.0 / Math.max(1, recipe.maxTime() - recipe.idealTime()));
         consumeIngredients(station, blockId, block, recipe); data.setInt(WATER, getInt(data, WATER, 0) - recipe.water());
-        setFluid(data, recipe.outputFluid(), station.capacity(), quality, 0); produceByproducts(station, blockId, block, recipe); completeEffects(block);
+        setFluid(data, recipe.outputFluid(), station.capacity(), quality, 0); produceByproducts(block, recipe); completeEffects(block);
         data.setInt(PROGRESS, 0); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false);
     }
 
@@ -311,7 +344,13 @@ public final class StationManager {
             else player.sendMessage(ColorUtil.color("&7Бойлер сейчас не готовит."));
             return;
         }
-        boolean fluidSlot = fluidSlots.contains(slot) || slot == station.resultSlot();
+        boolean fluidSlot = station.fluidSlots().contains(slot);
+        if (fluidSlot && (cursor == null || cursor.getType().isAir())) {
+            // Fluid columns are CONTAINER slots for framework persistence, but
+            // their visual contents are never directly movable by a player.
+            event.setInteractionCancelled(true);
+            return;
+        }
         if (station.id().equals("boiler") || station.id().equals("kettle")) {
             if (slot == station.waterSlot()) { handleWater(station, blockId, block, player, event); return; }
         }
@@ -369,7 +408,7 @@ public final class StationManager {
         String resultFluid = barrel == null ? fluid : barrel.outputFluid();
         ItemStack output = resultFluid.equalsIgnoreCase("water") ? drinks.createWater(container) : drinks.createFilled(resultFluid, ageWeeks, getDouble(data, QUALITY, 100), container);
         event.setInteractionCancelled(true); data.setInt(LEVEL, getLevel(data) - container.units());
-        if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false); }
+        if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); data.remove(FLUID_RENDER); CustomGuiAPI.setWorking(blockId, block, false); }
         deliver(player, event.getClick(), event.getCursor(), output); plugin.getServer().getScheduler().runTask(plugin, () -> renderAll(station, blockId, block)); return true;
     }
 
@@ -390,8 +429,12 @@ public final class StationManager {
         }
         ItemStack visual = null;
         if (fluid != null) {
-            int ageWeeks = Math.max(0, getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000)));
-            visual = drinks.createFilled(fluid, ageWeeks, getDouble(data, QUALITY, 100));
+            dev.moonaticks.betterThanBrewery.drink.DrinkDefinition fluidDrink = drinks.definition(fluid);
+            String visualName = fluidDrink == null ? (fluid.equalsIgnoreCase("water") ? "&bВода" : fluid) : fluidDrink.name();
+            org.bukkit.Color visualColor = fluidDrink == null ? org.bukkit.Color.AQUA : fluidDrink.color();
+            visual = items.create(plugin.getConfig().getString("gui.fluid-icon", "minecraft:potion"));
+            if (visual.getType().isAir()) visual = new ItemStack(Material.POTION);
+            visual = items.cloneWith(visual, visualName, List.of(), visualColor);
             double quality = getDouble(data, QUALITY, 100);
             List<String> fluidLore = new ArrayList<>(List.of("&8", "&7Уровень: &f" + level + "&7/&f" + station.capacity(),
                     "&7Качество: " + qualityName(quality) + " &8(" + (int) Math.round(quality) + "/100)"));
@@ -404,11 +447,15 @@ public final class StationManager {
             visual = items.appendLore(visual, fluidLore);
             visual.setAmount(1);
         }
-        int visible = fluid == null ? 0 : Math.max(1, Math.min(fluidSlots.size(), (int) Math.ceil(fluidSlots.size() * level / (double) Math.max(1, station.capacity()))));
-        for (int index = 0; index < fluidSlots.size(); index++) {
-            CustomGuiAPI.setLocalDesign(viewer, block, fluidSlots.get(index), index < visible ? visual : null);
+        int visible = fluid == null ? 0 : Math.max(1, Math.min(station.fluidSlots().size(), (int) Math.ceil(station.fluidSlots().size() * level / (double) Math.max(1, station.capacity()))));
+        int ageWeeks = Math.max(0, getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000)));
+        String renderKey = fluid == null ? "empty" : fluid + "|" + level + "|" + ageWeeks + "|" + Math.round(getDouble(data, QUALITY, 100));
+        if (!renderKey.equals(data.getString(FLUID_RENDER, ""))) {
+            for (int index = 0; index < station.fluidSlots().size(); index++) {
+                setSlotItem(station, blockId, block, station.fluidSlots().get(index), index < visible ? visual : null);
+            }
+            data.set(FLUID_RENDER, renderKey);
         }
-        CustomGuiAPI.setLocalDesign(viewer, block, station.resultSlot(), visual);
         if (station.id().equals("boiler") || station.id().equals("kettle")) {
             ItemStack waterIcon = items.create(plugin.getConfig().getString("gui.water-icon", "minecraft:potion_water"));
             waterIcon = items.appendLore(waterIcon, List.of("&7Нажмите с ведром, чтобы наполнить.", "&7Пустая тара заберёт воду по единицам."));
@@ -422,14 +469,15 @@ public final class StationManager {
         CustomGuiAPI.setLocalTitle(viewer, block, title);
     }
 
-    private void produceByproducts(StationDefinition station, String blockId, Location block, RecipeDefinition recipe) {
-        int index = 0;
+    private void produceByproducts(Location block, RecipeDefinition recipe) {
+        // The primary product is always a fluid. Solid byproducts no longer use
+        // inventory slots; successful rolls are dropped beside the station.
         for (Byproduct byproduct : recipe.byproducts()) {
-            if (ThreadLocalRandom.current().nextDouble() > byproduct.chance() || index >= station.byproductSlots().size()) continue;
-            int slot = station.byproductSlots().get(index++); ItemStack item = items.create(byproduct.item()); item.setAmount(byproduct.amount());
-            ItemStack existing = getSlotItem(station, blockId, block, slot);
-            if (existing == null || existing.getType().isAir()) setSlotItem(station, blockId, block, slot, item);
-            else block.getWorld().dropItemNaturally(block.clone().add(0.5, 1, 0.5), item);
+            if (ThreadLocalRandom.current().nextDouble() > byproduct.chance()) continue;
+            ItemStack item = items.create(byproduct.item());
+            if (item.getType().isAir()) continue;
+            item.setAmount(Math.min(item.getMaxStackSize(), byproduct.amount()));
+            block.getWorld().dropItemNaturally(block.clone().add(0.5, 1, 0.5), item);
         }
     }
 

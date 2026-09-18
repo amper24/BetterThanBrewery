@@ -38,7 +38,7 @@
 - `craft` — ингредиенты;
 - `fuel` — топливо;
 - `container` — обычный персистентный контейнер;
-- `result` — слот, из которого можно только забирать;
+- `fluid` — колонка жидкости на персистентных `CONTAINER`-слотах; клики, drag и shift-click блокируются, а фактическое поведение даёт FunctionalBlock;
 - неуказанные слоты остаются `design`.
 
 Заполнитель может быть ванильным или кастомным предметом с provider и namespace:
@@ -52,13 +52,13 @@ stations:
     # необязательно: переопределяет gui.filler только для бойлера
     filler: "itemsadder:brewery:boiler_filler"
     skeleton:
+      fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       craft: [10, 11, 12, 13, 14, 15]
       fuel: []
       container: []
-      result: [45, 46, 47]
 ```
 
-Для CraftEngine используется такой же формат: `craftengine:brewery:boiler_filler`. Если секцию `skeleton` удалить, сохраняется обратная совместимость со старыми `ingredient-slots` и `byproduct-slots`.
+Для CraftEngine используется такой же формат: `craftengine:brewery:boiler_filler`. Если секцию `skeleton` удалить, сохраняется обратная совместимость со старыми `ingredient-slots`; основной результат всё равно отображается и забирается только через fluid-колонки.
 
 ## Книга рецептов
 
@@ -160,6 +160,6 @@ formulas:
 
 ## Важное про CustomGuiReworked
 
-Фреймворк — не просто InventoryClickListener: у него есть скелет `DESIGN/CRAFT/FUEL/CONTAINER/RESULT`, BLOCK storage, local title/design для конкретного зрителя, функциональные блоки с `onBlockTick` и события фактического изменения слотов. BetterThanBrewery использует именно эти API: закрытие GUI не останавливает варку, предметы не лежат в памяти игрока, а экранная жидкость не может быть украдена как декоративный предмет.
+Фреймворк — не просто InventoryClickListener: у него есть скелет `DESIGN/CRAFT/FUEL/CONTAINER/RESULT`, BLOCK storage, local title/design для конкретного зрителя, функциональные блоки с `onBlockTick` и события фактического изменения слотов. BetterThanBrewery использует именно эти API: закрытие GUI не останавливает варку, предметы не лежат в памяти игрока, а экранная жидкость не может быть украдена как декоративный предмет. Станции больше не используют framework-слоты `RESULT`: жидкость отображается и забирается только через fluid-колонки `CONTAINER`, а все их клики блокируются и обрабатываются FunctionalBlock вручную.
 
 Pitch Simple Voice Chat требует небольшого клиентского/voice addon, который слушает канал `betterthanbrewery:voice_pitch` (float pitch, int duration, UTF-8 player name). Это сделано намеренно: официальный Bukkit API Simple Voice Chat не меняет pitch входящего микрофона сам по себе. Без addon остальные стадии опьянения продолжают работать.
