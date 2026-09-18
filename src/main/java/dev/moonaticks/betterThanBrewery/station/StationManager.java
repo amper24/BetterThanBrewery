@@ -13,6 +13,7 @@ import dev.moonaticks.betterThanBrewery.recipe.RecipeRegistry;
 import dev.moonaticks.betterThanBrewery.util.ColorUtil;
 import dev.moonaticks.customGuiReworked.api.CustomGuiAPI;
 import dev.moonaticks.customGuiReworked.api.Gui;
+import dev.moonaticks.customGuiReworked.api.SlotType;
 import dev.moonaticks.customGuiReworked.api.StorageType;
 import dev.moonaticks.customGuiReworked.storage.StorageKey;
 import dev.moonaticks.customGuiReworked.api.functional.FunctionalBlock;
@@ -367,8 +368,8 @@ public final class StationManager {
             List<String> fluidLore = new ArrayList<>(List.of("&8", "&7Уровень: &f" + level + "&7/&f" + station.capacity(),
                     "&7Качество: " + qualityName(quality) + " &8(" + (int) Math.round(quality) + "/100)"));
             if (station.id().equals("barrel") && active != null) {
-                int ageWeeks = getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000));
-                fluidLore.add("&7Возраст: &f" + ageWeeks + " недель");
+                int barrelAgeWeeks = getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000));
+                fluidLore.add("&7Возраст: &f" + barrelAgeWeeks + " недель");
                 if (active.weeks() > 0) fluidLore.add("&7Рекомендуемая выдержка: &f" + active.weeks() + " недель");
             }
             fluidLore.add("&8Забирать можно только пустой тарой.");
