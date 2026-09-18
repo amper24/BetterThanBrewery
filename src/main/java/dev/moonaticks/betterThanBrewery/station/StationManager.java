@@ -97,7 +97,8 @@ public final class StationManager {
                     Math.max(1, config.getInt(path + ".capacity", 10)), Math.max(0, config.getInt(path + ".water-capacity", 10)),
                     config.getInt(path + ".water-input-slot", 40), config.getInt(path + ".fluid-input-slot", 40),
                     config.getInt(path + ".fuel-slot", 42), config.getInt(path + ".result-slot", 22),
-                    config.getIntegerList(path + ".ingredient-slots"), config.getIntegerList(path + ".byproduct-slots"),
+                    skeletonSlots(config, path, "craft", config.getIntegerList(path + ".ingredient-slots")),
+                    skeletonSlots(config, path, "result", config.getIntegerList(path + ".byproduct-slots")),
                     config.getStringList(path + ".blocks"));
             stations.put(station.id(), station); byGui.put(station.gui(), station);
             registerGui(station);
@@ -108,14 +109,39 @@ public final class StationManager {
     private void registerGui(StationDefinition station) {
         String titleKey = "gui." + station.id() + "-title";
         String title = offset(ColorUtil.color(plugin.getConfig().getString(titleKey, station.id())), plugin.getConfig().getInt("gui.title-offset", 0));
+        String fillerSpec = plugin.getConfig().getString("stations." + station.id() + ".filler",
+                plugin.getConfig().getString("gui.filler", "minecraft:black_stained_glass_pane"));
+        ItemStack stationFiller = items.create(fillerSpec);
+        if (stationFiller.getType().isAir()) stationFiller = filler;
         dev.moonaticks.customGuiReworked.api.GuiBuilder builder = CustomGuiAPI.builder(station.gui())
                 .title(title).size(54).storage(StorageType.BLOCK);
-        for (int slot = 0; slot < 54; slot++) builder.design(slot, filler);
-        for (int slot : station.ingredientSlots()) builder.slot(slot, SlotType.CRAFT);
-        if (station.id().equals("distiller")) builder.slot(station.fuelSlot(), SlotType.FUEL);
-        for (int slot : station.byproductSlots()) builder.slot(slot, SlotType.RESULT);
-        // Input/result/fluid slots intentionally stay DESIGN: liquid can only move through our vessel handler.
+        for (int slot = 0; slot < 54; slot++) builder.design(slot, stationFiller);
+        ConfigurationSection skeleton = plugin.getConfig().getConfigurationSection("stations." + station.id() + ".skeleton");
+        if (skeleton == null) {
+            for (int slot : station.ingredientSlots()) builder.slot(slot, SlotType.CRAFT);
+            if (station.id().equals("distiller")) builder.slot(station.fuelSlot(), SlotType.FUEL);
+            for (int slot : station.byproductSlots()) builder.slot(slot, SlotType.RESULT);
+        } else {
+            applySkeleton(builder, skeleton, "craft", SlotType.CRAFT);
+            applySkeleton(builder, skeleton, "fuel", SlotType.FUEL);
+            applySkeleton(builder, skeleton, "container", SlotType.CONTAINER);
+            applySkeleton(builder, skeleton, "result", SlotType.RESULT);
+            // Unlisted slots deliberately remain DESIGN and keep the filler.
+        }
+        // Input/result/fluid slots intentionally stay DESIGN unless the configured skeleton changes them.
         CustomGuiAPI.registerGui(builder.build(), true);
+    }
+
+    private static List<Integer> skeletonSlots(FileConfiguration config, String stationPath, String type, List<Integer> fallback) {
+        String path = stationPath + ".skeleton." + type;
+        return config.contains(path) ? config.getIntegerList(path) : fallback;
+    }
+
+    private static void applySkeleton(dev.moonaticks.customGuiReworked.api.GuiBuilder builder,
+                                      ConfigurationSection skeleton, String type, SlotType slotType) {
+        for (int slot : skeleton.getIntegerList(type)) {
+            if (slot >= 0 && slot < 54) builder.slot(slot, slotType);
+        }
     }
 
     private void registerFunctionalBlock(StationDefinition station, String blockId) {

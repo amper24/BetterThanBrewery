@@ -29,6 +29,37 @@
 
 В каждом рецепте `output.name` и `output.color` обязательны; остальные поля напитка можно не указывать. `output.item` позволяет заменить Potion на CraftEngine/ItemsAdder предмет.
 
+## Интерфейсы, скелет и выпадение при разрушении
+
+Станционные GUI создаются именно через CustomGuiReworked: используется `CustomGuiAPI.builder(...)`, `StorageType.BLOCK` и функциональный блок с `onBlockTick`, `onItemChanged` и обработчиком кликов. В плагине нет отдельного самописного `InventoryClickEvent`-GUI и нет собственного обработчика `BlockBreakEvent` для станций. Персистентное содержимое блока и его выпадение при разрушении отдаётся CustomGuiReworked; BetterThanBrewery отвечает за состояние жидкости, прогресс, рецепты и побочные продукты. Для ItemsAdder-станций плагин дополнительно адресует BLOCK-хранилище через официальный `StorageKey.forBlock`, чтобы содержимое имело тот же ключ мира и координат.
+
+По умолчанию каждый слот сначала становится `DESIGN` и получает заполнитель. Затем из секции `stations.<id>.skeleton` нужные слоты переводятся в типы CustomGuiReworked:
+
+- `craft` — ингредиенты;
+- `fuel` — топливо;
+- `container` — обычный персистентный контейнер;
+- `result` — слот, из которого можно только забирать;
+- неуказанные слоты остаются `design`.
+
+Заполнитель может быть ванильным или кастомным предметом с provider и namespace:
+
+```yaml
+gui:
+  filler: "minecraft:black_stained_glass_pane"
+
+stations:
+  boiler:
+    # необязательно: переопределяет gui.filler только для бойлера
+    filler: "itemsadder:brewery:boiler_filler"
+    skeleton:
+      craft: [10, 11, 12, 13, 14, 15]
+      fuel: []
+      container: []
+      result: [45, 46, 47]
+```
+
+Для CraftEngine используется такой же формат: `craftengine:brewery:boiler_filler`. Если секцию `skeleton` удалить, сохраняется обратная совместимость со старыми `ingredient-slots` и `byproduct-slots`.
+
 ## Книга рецептов
 
 Книга открывается правым кликом по настроенному предмету и использует GUI-фреймворк CustomGuiReworked. По умолчанию это обычная `minecraft:book`, но предмет можно заменить на ItemsAdder или CraftEngine в `config.yml`:

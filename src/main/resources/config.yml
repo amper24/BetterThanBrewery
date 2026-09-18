@@ -71,6 +71,15 @@ stations:
     result-slot: 22
     ingredient-slots: [10, 11, 12, 13, 14, 15]
     byproduct-slots: [45, 46, 47]
+    # Optional station-specific filler overrides gui.filler. It accepts
+    # minecraft:item, itemsadder:namespace:item or craftengine:namespace:item.
+    # filler: "itemsadder:brewery:boiler_filler"
+    skeleton:
+      # Every slot not listed here stays DESIGN and displays the filler.
+      craft: [10, 11, 12, 13, 14, 15]
+      fuel: []
+      container: []
+      result: [45, 46, 47]
     # Replace examples with your real CraftEngine or ItemsAdder block IDs.
     blocks: ["craftengine:betterthanbrewery_boiler", "itemsadder:betterthanbrewery_boiler"]
   distiller:
@@ -81,6 +90,11 @@ stations:
     fuel-slot: 42
     result-slot: 22
     byproduct-slots: [45, 46, 47]
+    skeleton:
+      craft: []
+      fuel: [42]
+      container: []
+      result: [45, 46, 47]
     blocks: ["craftengine:betterthanbrewery_distiller", "itemsadder:betterthanbrewery_distiller"]
   barrel:
     enabled: true
@@ -88,6 +102,11 @@ stations:
     capacity: 10
     fluid-input-slot: 40
     result-slot: 22
+    skeleton:
+      craft: []
+      fuel: []
+      container: []
+      result: []
     blocks: ["craftengine:betterthanbrewery_barrel", "itemsadder:betterthanbrewery_barrel"]
   kettle:
     enabled: true
@@ -97,6 +116,11 @@ stations:
     water-input-slot: 40
     result-slot: 22
     ingredient-slots: [10, 11, 12, 13]
+    skeleton:
+      craft: [10, 11, 12, 13]
+      fuel: []
+      container: []
+      result: []
     blocks: ["craftengine:betterthanbrewery_kettle", "itemsadder:betterthanbrewery_kettle"]
 
 heat:
