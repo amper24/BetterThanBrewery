@@ -16,6 +16,10 @@
 - Локальный title через CustomGuiReworked, `gui.title-offset` для ресурс-пак шрифтов, анимация уровня жидкости через local design, цветные индикаторы качества, подсказки прямо в слотах воды/переливания, частицы и звуки.
 - Профессиональный reload: открытые станционные GUI безопасно закрываются, рецепты валидируются, ошибки отдельных файлов не ломают остальные рецепты.
 
+## Проверки и CI
+
+В `src/test` находятся unit-тесты формул и цветов. GitHub Actions запускает `clean test build` на Java 25 для каждого push и pull request (`.github/workflows/build.yml`). Локальный запуск: `./gradlew test`; для полной проверки — `./gradlew clean test build`.
+
 ## Установка
 
 1. Установить Paper 26.2, CustomGuiReworked 2.x и (по желанию) CraftEngine, ItemsAdder, Denizen и voice-chat.

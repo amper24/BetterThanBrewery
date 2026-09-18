@@ -45,10 +45,12 @@ public final class Formula {
             if (take('*')) value *= power();
             else if (take('/')) {
                 double divisor = power();
-                value = Math.abs(divisor) < 1.0E-12 ? 0 : value / divisor;
+                if (Math.abs(divisor) < 1.0E-12) throw new IllegalArgumentException("division by zero");
+                value /= divisor;
             } else if (take('%')) {
                 double divisor = power();
-                value = Math.abs(divisor) < 1.0E-12 ? 0 : value % divisor;
+                if (Math.abs(divisor) < 1.0E-12) throw new IllegalArgumentException("modulo by zero");
+                value %= divisor;
             } else return value;
         }
     }

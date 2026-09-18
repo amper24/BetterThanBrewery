@@ -24,6 +24,12 @@ dependencies {
     // Optional: used only by CustomGuiReworked's CraftEngine hook at runtime.
     compileOnly('net.momirealms:craft-engine-core:26.7.2') { transitive = false }
     compileOnly('net.momirealms:craft-engine-bukkit:26.7.2') { transitive = false }
+
+    testImplementation platform('org.junit:junit-bom:6.0.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testCompileOnly "io.papermc.paper:paper-api:${paperVersion}"
+    testRuntimeOnly "io.papermc.paper:paper-api:${paperVersion}"
 }
 
 tasks.named('runServer', xyz.jpenilla.runpaper.task.RunServer) {
@@ -42,6 +48,14 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release.set(targetJavaVersion)
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
 }
 
 processResources {

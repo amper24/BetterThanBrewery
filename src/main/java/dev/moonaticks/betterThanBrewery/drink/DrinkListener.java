@@ -18,13 +18,17 @@ public final class DrinkListener implements Listener {
     @EventHandler public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getClickedBlock() != null) return; // block interactions are reserved for station pouring
-        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (event.getHand() != EquipmentSlot.HAND && event.getHand() != EquipmentSlot.OFF_HAND) return;
         ItemStack item = event.getItem(); if (item == null || item.getType() == Material.POTION) return;
         if (drinks.read(item) == null) return;
         event.setCancelled(true);
         ItemStack consumed = item.clone();
         item.setAmount(item.getAmount() - 1);
-        event.getPlayer().getInventory().setItemInMainHand(item.getAmount() <= 0 ? new ItemStack(Material.AIR) : item);
+        if (event.getHand() == EquipmentSlot.OFF_HAND) {
+            event.getPlayer().getInventory().setItemInOffHand(item.getAmount() <= 0 ? new ItemStack(Material.AIR) : item);
+        } else {
+            event.getPlayer().getInventory().setItemInMainHand(item.getAmount() <= 0 ? new ItemStack(Material.AIR) : item);
+        }
         drinks.consumeItem(event.getPlayer(), consumed, drunkenness::add);
     }
 }
