@@ -32,6 +32,7 @@ class RecipeResourceTest {
             "recipes/brewery/berry-tea.yml",
             "recipes/brewery/coffee.yml");
 
+    private static final Pattern ID = Pattern.compile("(?m)^id:\\s*[A-Za-z0-9_-]+\\s*$");
     private static final Pattern STATION = Pattern.compile("(?m)^station:\\s*(boiler|distiller|barrel|kettle)\\s*$");
     private static final Pattern OUTPUT_NAME = Pattern.compile("(?m)^  name:\\s*.+$");
     private static final Pattern OUTPUT_COLOR = Pattern.compile("(?m)^  color:\\s*.+$");
@@ -43,7 +44,7 @@ class RecipeResourceTest {
                 assertNotNull(stream, "Missing bundled recipe: " + path);
                 String yaml = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
                 assertTrue(STATION.matcher(yaml).find(), "Missing/invalid station: " + path);
-                assertTrue(yaml.matches("(?s).*^id:\\s*[A-Za-z0-9_-]+\\s*$.*"), "Missing id: " + path);
+                assertTrue(ID.matcher(yaml).find(), "Missing id: " + path);
                 assertTrue(yaml.contains("output:"), "Missing output section: " + path);
                 assertTrue(OUTPUT_NAME.matcher(yaml).find(), "Missing output.name: " + path);
                 assertTrue(OUTPUT_COLOR.matcher(yaml).find(), "Missing output.color: " + path);
