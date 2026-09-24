@@ -31,9 +31,9 @@ class ResourcePackTest {
             assertTrue(font.contains(glyph));
             assertTrue(font.contains("betterthanbrewery:font/haze_" + i + ".png"));
             BufferedImage png = ImageIO.read(ROOT.resolve("assets/betterthanbrewery/textures/font/haze_" + i + ".png").toFile());
-            assertEquals(512, png.getWidth());
-            assertEquals(288, png.getHeight());
-            assertEquals(0, png.getRGB(256, 144) >>> 24, "the center must not obstruct gameplay");
+            assertEquals(256, png.getWidth()); // vanilla bitmap glyphs must not exceed 256x256
+            assertEquals(144, png.getHeight());
+            assertEquals(0, png.getRGB(128, 72) >>> 24, "the center must not obstruct gameplay");
             assertTrue((png.getRGB(0, 0) >>> 24) > 0, "there must be visible haze at the edges");
         }
         assertNotNull(ImageIO.read(ROOT.resolve("pack.png").toFile()));

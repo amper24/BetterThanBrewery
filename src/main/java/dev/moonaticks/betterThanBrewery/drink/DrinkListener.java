@@ -20,7 +20,9 @@ public final class DrinkListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) { drinks.consume(event, drunkenness::add); }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    // Paper pre-cancels right-click-air when vanilla would do nothing (e.g. a
+    // custom bowl); ignoreCancelled here would make those vessels undrinkable.
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getClickedBlock() != null) return; // block interactions are reserved for station pouring

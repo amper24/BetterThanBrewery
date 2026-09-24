@@ -33,6 +33,7 @@ class DrinkListenerTest {
         when(event.getItem()).thenReturn(filled);
         when(event.getAction()).thenReturn(Action.RIGHT_CLICK_AIR);
         when(event.getHand()).thenReturn(EquipmentSlot.OFF_HAND);
+        when(event.isCancelled()).thenReturn(true); // Paper pre-cancels air interactions with non-usable items
 
         listener.onInteract(event);
 

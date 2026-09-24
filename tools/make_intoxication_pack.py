@@ -15,7 +15,8 @@ import zlib
 
 ROOT = Path(__file__).resolve().parent.parent / "resource-pack"
 TEXTURES = ROOT / "assets/betterthanbrewery/textures/font"
-W, H = 512, 288
+# Vanilla bitmap fonts cap each glyph at 256x256 source pixels.
+W, H = 256, 144
 
 
 def chunk(name: bytes, data: bytes) -> bytes:

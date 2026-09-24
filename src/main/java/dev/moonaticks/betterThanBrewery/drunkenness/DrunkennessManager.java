@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.nio.ByteBuffer;
@@ -42,6 +43,8 @@ public final class DrunkennessManager implements Listener {
     private final Set<UUID> actionbars = new HashSet<>();
     private final Map<UUID, Double> levels = new ConcurrentHashMap<>();
     private String pitchChannel, registeredChannel;
+    private BukkitTask tickTask;
+    private int scheduledInterval;
 
     public DrunkennessManager(BetterThanBrewery plugin) {
         this.plugin = plugin;
@@ -84,14 +87,18 @@ public final class DrunkennessManager implements Listener {
         // Re-evaluate existing players after a reload, even if their stage index did not change.
         lastStage.clear();
         for (Player player : Bukkit.getOnlinePlayers()) display(player, value(player));
+        if (tickTask != null && scheduledInterval != interval) start();
     }
 
     public void start() {
         overlay.start();
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            overlay.advance(interval);
-            for (Player player : Bukkit.getOnlinePlayers()) tick(player);
-        }, interval, interval);
+        if (tickTask != null) tickTask.cancel();
+        int period = interval;
+        scheduledInterval = period;
+        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            overlay.advance(period);
+            for (Player player : Bukkit.getOnlinePlayers()) tick(player, period);
+        }, period, period);
     }
     public double value(Player player) {
         return levels.computeIfAbsent(player.getUniqueId(), ignored ->
@@ -105,14 +112,14 @@ public final class DrunkennessManager implements Listener {
         if (player.isOnline()) display(player, clamped);
     }
 
-    private void tick(Player player) {
+    private void tick(Player player, int period) {
         if (!plugin.getConfig().getBoolean("drunkenness.enabled", true)) {
             display(player, 0);
             return;
         }
         double current = value(player);
         if (decayPerMinute > 0 && current > 0) {
-            current = Math.max(0, current - decayPerMinute * interval / 1200.0);
+            current = Math.max(0, current - decayPerMinute * period / 1200.0);
             // Avoid running display twice (and re-applying stage entry commands).
             levels.put(player.getUniqueId(), current);
             player.getPersistentDataContainer().set(key, PersistentDataType.DOUBLE, current);
@@ -178,6 +185,7 @@ public final class DrunkennessManager implements Listener {
         return min >= 80 ? "\uE104" : min >= 50 ? "\uE103" : min >= 20 ? "\uE102" : "\uE101";
     }
     public String replaceChat(Player player, String message) {
+        if (!plugin.getConfig().getBoolean("drunkenness.enabled", true)) return message;
         Stage stage = stage(value(player)); if (stage == null || stage.replacements().isEmpty()) return message;
         String result = message;
         for (Map.Entry<String, String> entry : stage.replacements().entrySet()) result = result.replace(entry.getKey(), entry.getValue());
@@ -189,6 +197,7 @@ public final class DrunkennessManager implements Listener {
         lastStage.remove(id); actionbars.remove(id); levels.remove(id);
     }
     public void shutdown() {
+        if (tickTask != null) { tickTask.cancel(); tickTask = null; }
         for (Player player : Bukkit.getOnlinePlayers()) if (actionbars.remove(player.getUniqueId())) player.sendActionBar(Component.empty());
         overlay.shutdown();
         if (registeredChannel != null) {

@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.Mockito.*;
@@ -28,7 +29,7 @@ class ItemDeliveryTest {
         when(filled.clone()).thenReturn(remainder);
         when(empty.getType()).thenReturn(Material.BOWL);
         when(empty.clone()).thenReturn(empty);
-        when(inventory.addItem(empty)).thenReturn(Map.of(0, empty));
+        when(inventory.addItem(empty)).thenReturn(new HashMap<>(Map.of(0, empty)));
 
         ItemDelivery.replaceHand(player, EquipmentSlot.OFF_HAND, filled, empty);
         verify(remainder).setAmount(2);
