@@ -81,10 +81,10 @@ class RecipeBookManagerTest {
         });
         // Paper's real ItemStack constructors need a running server/registry.
         // Mock only those construction calls; GUI behavior stays under test.
-        try (MockedConstruction<ItemStack> stacks = mockConstruction(ItemStack.class, (created, context) -> {
-                 if (context.arguments().get(0) instanceof Material material) when(created.getType()).thenReturn(material);
-                 when(created.clone()).thenReturn(created);
-                 when(created.getMaxStackSize()).thenReturn(64);
+        try (MockedConstruction<ItemStack> stacks = mockConstruction(ItemStack.class, (stack, context) -> {
+                 if (context.arguments().get(0) instanceof Material material) when(stack.getType()).thenReturn(material);
+                 when(stack.clone()).thenReturn(stack);
+                 when(stack.getMaxStackSize()).thenReturn(64);
              });
              MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getScheduler).thenReturn(scheduler);
