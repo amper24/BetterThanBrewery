@@ -157,7 +157,7 @@ class RecipeBookManagerTest {
 
     private static RecipeDefinition recipe(String id) {
         DrinkDefinition drink = new DrinkDefinition(id, "&6" + id, Color.AQUA, 0, 4,
-                List.of(), List.of(), List.of(), "", Map.of(), "");
+                List.of(), List.of(), "", Map.of(), "");
         return new RecipeDefinition(id, "boiler", List.of(new Ingredient("minecraft:wheat", 2, -1)),
                 1, 100, 100, 200, "", id, 0, "", 0, drink, List.of(), Map.of());
     }

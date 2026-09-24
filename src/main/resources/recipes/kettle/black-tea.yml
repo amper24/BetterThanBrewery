@@ -15,7 +15,3 @@ output:
   food: 3
   lore:
     - "&7Простой горячий чай для долгой ночи."
-  effects:
-    - type: SPEED
-      duration: 140
-      amplifier: 0

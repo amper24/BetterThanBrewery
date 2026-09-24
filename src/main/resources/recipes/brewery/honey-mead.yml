@@ -17,10 +17,6 @@ output:
   food: 4
   lore:
     - "&7Тёплая и душистая."
-  effects:
-    - type: ABSORPTION
-      duration: 120
-      amplifier: 0
 byproducts:
   - item: minecraft:glass_bottle
     amount: 1

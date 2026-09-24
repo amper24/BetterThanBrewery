@@ -15,7 +15,3 @@ output:
   food: 4
   lore:
     - "&7Яркий цвет и лёгкая кислинка."
-  effects:
-    - type: ABSORPTION
-      duration: 80
-      amplifier: 0

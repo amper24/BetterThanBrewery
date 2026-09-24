@@ -17,10 +17,6 @@ output:
   food: 2
   lore:
     - "&7Сладкое вино из лесных ягод."
-  effects:
-    - type: REGENERATION
-      duration: 80
-      amplifier: 0
 byproducts:
   - item: minecraft:sweet_berries
     amount: 1

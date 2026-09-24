@@ -1,7 +1,6 @@
 package dev.moonaticks.betterThanBrewery.recipe;
 
 import dev.moonaticks.betterThanBrewery.drink.DrinkDefinition;
-import dev.moonaticks.betterThanBrewery.drink.DrinkEffect;
 import dev.moonaticks.betterThanBrewery.util.ColorUtil;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -150,20 +149,12 @@ public final class RecipeLoader {
         int food = section.getInt("food", section.getInt("hunger", 0));
         double alcohol = section.getDouble("alcohol", 0);
         List<String> lore = section.getStringList("lore");
-        List<DrinkEffect> effects = new ArrayList<>();
-        for (Map<?, ?> map : section.getMapList("effects")) {
-            Object type = map.get("type");
-            if (type == null) continue;
-            effects.add(new DrinkEffect(String.valueOf(type), number(map.get("duration"), 100),
-                    number(map.get("amplifier"), 0), decimal(map.get("chance"), 1),
-                    string(map.get("duration-formula")), string(map.get("amplifier-formula"))));
-        }
         List<String> commands = section.getStringList("commands");
         String denizen = section.getString("denizen-script", section.getString("denizen", ""));
         Map<String, String> formulas = strings(section.getConfigurationSection("formulas"));
         if (recipeFormulas != null) formulas = merge(formulas, strings(recipeFormulas));
         String item = section.getString("item", "");
-        return new DrinkDefinition(id, name, color, food, alcohol, lore, effects, commands, denizen, formulas, item);
+        return new DrinkDefinition(id, name, color, food, alcohol, lore, commands, denizen, formulas, item);
     }
 
     private List<Ingredient> ingredients(ConfigurationSection yaml, String station) {

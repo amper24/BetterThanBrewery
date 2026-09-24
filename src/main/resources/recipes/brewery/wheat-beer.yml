@@ -19,10 +19,6 @@ output:
   lore:
     - "&7Мягкая солодовая основа."
     - "&8Лучше всего пьётся охлаждённым."
-  effects:
-    - type: NIGHT_VISION
-      duration: 80
-      amplifier: 0
 byproducts:
   - item: minecraft:wheat_seeds
     amount: 1

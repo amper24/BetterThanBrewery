@@ -16,14 +16,11 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 public final class DrinkService {
     private final BetterThanBrewery plugin;
@@ -116,14 +113,6 @@ public final class DrinkService {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!player.isOnline()) return;
             if (prepared.food() > 0) player.setFoodLevel(Math.min(20, player.getFoodLevel() + prepared.food()));
-            for (DrinkEffect effect : drink.effects()) {
-                if (ThreadLocalRandom.current().nextDouble() > effect.chance()) continue;
-                Map<String, Double> vars = prepared.variables();
-                int duration = Math.max(1, (int) Math.round(Formula.evaluate(effect.durationFormula(), vars, effect.duration())));
-                int amplifier = Math.max(0, (int) Math.round(Formula.evaluate(effect.amplifierFormula(), vars, effect.amplifier())));
-                PotionEffectType type = PotionEffectType.getByName(effect.type().toUpperCase());
-                if (type != null) player.addPotionEffect(new PotionEffect(type, duration, amplifier));
-            }
             for (String command : drink.commands()) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), stripSlash(fill(command, player, prepared, tag)));
             if (!drink.denizenScript().isBlank() && Bukkit.getPluginManager().isPluginEnabled("Denizen")) {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), stripSlash("ex run " + fill(drink.denizenScript(), player, prepared, tag)));
@@ -156,7 +145,7 @@ public final class DrinkService {
                 "age", Integer.toString(ageWeeks), "quality", Integer.toString((int) Math.round(quality)),
                 "alcohol", Integer.toString((int) Math.round(alcohol)))));
         if (ageWeeks > 0 && drink.lore().stream().noneMatch(line -> line.contains("{age}"))) lore.add("&7Выдержка: &f" + ageWeeks + " недель");
-        return new Prepared(name, lore, alcohol, food, drink.itemSpec(), vars);
+        return new Prepared(name, lore, alcohol, food, drink.itemSpec());
     }
     private static double clamp(double value, double min, double max) { return Math.max(min, Math.min(max, value)); }
     private static String stripSlash(String command) { return command != null && command.startsWith("/") ? command.substring(1) : command; }
@@ -165,6 +154,6 @@ public final class DrinkService {
                 .replace("{age}", Integer.toString(tag.ageWeeks())).replace("{alcohol}", Double.toString(prepared.alcohol()))
                 .replace("{quality}", Double.toString(tag.quality()));
     }
-    private record Prepared(String name, List<String> lore, double alcohol, int food, String itemSpec, Map<String, Double> variables) { }
+    private record Prepared(String name, List<String> lore, double alcohol, int food, String itemSpec) { }
     @FunctionalInterface public interface DrunkennessSink { void add(Player player, double units); }
 }

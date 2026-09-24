@@ -13,10 +13,6 @@ output:
   food: 1
   lore:
     - "&7Травяной аромат и опасно крепкий характер."
-  effects:
-    - type: NIGHT_VISION
-      duration: 160
-      amplifier: 0
 byproducts:
   - item: minecraft:short_grass
     amount: 1

@@ -53,12 +53,6 @@ jobs:
                       message = f"{case.get('classname')}.{case.get('name')}: {failure.get('message')}\n{failure.text or ''}"
                       print('::error title=Test failure::' + message[:7000].replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D'))
           PY
-      - name: Upload optional client resource pack
-        uses: actions/upload-artifact@v4
-        with:
-          name: betterthanbrewery-intoxication-pack
-          path: build/resource-pack/*.zip
-          if-no-files-found: error
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

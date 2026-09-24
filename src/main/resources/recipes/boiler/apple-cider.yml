@@ -18,10 +18,6 @@ output:
   food: 3
   lore:
     - "&7Пахнет осенью и дубовой корой."
-  effects:
-    - type: NIGHT_VISION
-      duration: 160
-      amplifier: 0
 byproducts:
   - item: minecraft:charcoal
     amount: 1

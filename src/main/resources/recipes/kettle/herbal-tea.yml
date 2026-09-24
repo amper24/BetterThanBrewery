@@ -15,7 +15,3 @@ output:
   food: 4
   lore:
     - "&7Тёплый чай из маленького чайника."
-  effects:
-    - type: REGENERATION
-      duration: 100
-      amplifier: 0

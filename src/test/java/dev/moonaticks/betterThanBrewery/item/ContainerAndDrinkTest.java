@@ -70,7 +70,7 @@ class ContainerAndDrinkTest {
         DrinkService drinks = new DrinkService(plugin, items, containers);
         RecipeRegistry registry = new RecipeRegistry();
         DrinkDefinition definition = new DrinkDefinition("beer", "&6Пиво", Color.ORANGE, 0, 6,
-                List.of(), List.of(), List.of(), "", Map.of(), "itemsadder:brewery:beer_skin");
+                List.of(), List.of(), "", Map.of(), "itemsadder:brewery:beer_skin");
         registry.add(new RecipeDefinition("beer", "boiler", List.of(new Ingredient("minecraft:wheat", 1, 10)),
                 1, 20, 20, 40, "", "beer", 0, "", 0, definition, List.of(), Map.of()));
         drinks.setRegistry(registry);

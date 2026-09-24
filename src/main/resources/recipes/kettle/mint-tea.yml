@@ -15,7 +15,3 @@ output:
   food: 3
   lore:
     - "&7Свежесть и спокойствие в одной чашке."
-  effects:
-    - type: REGENERATION
-      duration: 80
-      amplifier: 0

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,6 +49,7 @@ class RecipeResourceTest {
                 assertTrue(yaml.contains("output:"), "Missing output section: " + path);
                 assertTrue(OUTPUT_NAME.matcher(yaml).find(), "Missing output.name: " + path);
                 assertTrue(OUTPUT_COLOR.matcher(yaml).find(), "Missing output.color: " + path);
+                assertFalse(yaml.contains("  effects:"), "Recipes must not give potion bonuses: " + path);
             }
         }
     }

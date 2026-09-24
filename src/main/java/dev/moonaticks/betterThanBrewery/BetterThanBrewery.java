@@ -51,7 +51,6 @@ public final class BetterThanBrewery extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(recipeBook, this);
         Bukkit.getPluginManager().registerEvents(new DrinkListener(drinks, drunkenness), this);
         Bukkit.getPluginManager().registerEvents(drunkenness, this);
-        Bukkit.getPluginManager().registerEvents(drunkenness.overlay(), this);
         drunkenness.start();
         if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations, drunkenness); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
         Bukkit.getScheduler().runTaskTimer(this, () -> CustomGuiAPI.getFunctionalBlocks().tickDataSave(), 200, Math.max(40, getConfig().getInt("settings.autosave-ticks", 200)));

@@ -1,8 +1,0 @@
-{
-  "pack": {
-    "pack_format": 88,
-    "min_format": [88, 0],
-    "max_format": [88, 0],
-    "description": "BetterThanBrewery | Haze intoxication HUD (Java 26.2)"
-  }
-}
