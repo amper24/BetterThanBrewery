@@ -1,7 +1,7 @@
 prefix: "&8[&6BetterThanBrewery&8] &r"
 reloaded: "&aКонфигурация, рецепты и станции перезагружены."
 no-permission: "&cНедостаточно прав."
-no-custom-gui: "&cДля BetterThanBrewery требуется CustomGuiReworked 2.x."
+no-custom-gui: "&cДля BetterThanBrewery требуется CustomGuiReworked 2.4.5 или новее."
 unknown-command: "&e/betterbrewery reload &7— перечитать конфигурацию\n&e/betterbrewery info &7— показать состояние"
 info: "&6BetterThanBrewery &fv{version} &7| рецептов: &f{recipes} &7| напитков: &f{drinks}"
 not-container: "&cНужна пустая тара из конфигурации."

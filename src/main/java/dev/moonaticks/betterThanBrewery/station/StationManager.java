@@ -13,12 +13,13 @@ import dev.moonaticks.betterThanBrewery.recipe.RecipeRegistry;
 import dev.moonaticks.betterThanBrewery.util.ColorUtil;
 import dev.moonaticks.customGuiReworked.api.CustomGuiAPI;
 import dev.moonaticks.customGuiReworked.api.Gui;
+import dev.moonaticks.customGuiReworked.api.GuiBuilder;
+import dev.moonaticks.customGuiReworked.api.GuiCategory;
 import dev.moonaticks.customGuiReworked.api.SlotType;
 import dev.moonaticks.customGuiReworked.api.StorageType;
 import dev.moonaticks.customGuiReworked.storage.StorageKey;
 import dev.moonaticks.customGuiReworked.api.functional.FunctionalBlock;
 import dev.moonaticks.customGuiReworked.api.functional.FunctionalBlockData;
-import dev.moonaticks.customGuiReworked.api.event.GuiDragEvent;
 import dev.moonaticks.customGuiReworked.api.event.GuiSlotClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -32,21 +33,22 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Station state lives in CustomGuiReworked's persistent block storage, not in viewers. */
-public final class StationManager implements org.bukkit.event.Listener {
+/** Process state lives in CGR FunctionalBlockData; ingredients and fuel use BLOCK storage. */
+public final class StationManager {
     private static final String FLUID = "fluid";
     private static final String LEVEL = "fluid-level";
     private static final String WATER = "water";
@@ -54,49 +56,33 @@ public final class StationManager implements org.bukkit.event.Listener {
     private static final String QUALITY = "quality";
     private static final String PROGRESS = "progress";
     private static final String RECIPE = "recipe";
-    private static final String FLUID_RENDER = "fluid-render";
+    private static final String LEGACY_FLUID_RENDER = "fluid-render";
+
+    private record FluidView(Inventory inventory, String state) { }
 
     private final BetterThanBrewery plugin;
     private final ItemService items;
     private final ContainerService containers;
     private final DrinkService drinks;
     private final Lang lang;
+    private final GuiCategory category;
+    private final SlotType fluidSlotType;
     private final Map<String, StationDefinition> stations = new HashMap<>();
     private final Map<String, StationDefinition> byGui = new HashMap<>();
+    // CGR may call onTick/onClick for every handler sharing a GUI name.
+    // Keep the actual block ID chosen in onOpen for this viewer.
+    private final Map<UUID, String> activeBlockIds = new HashMap<>();
+    private final Map<UUID, FluidView> fluidViews = new HashMap<>();
     private RecipeRegistry recipes = new RecipeRegistry();
     private ItemStack filler;
 
-    public StationManager(BetterThanBrewery plugin, ItemService items, ContainerService containers, DrinkService drinks, Lang lang) {
+    public StationManager(BetterThanBrewery plugin, ItemService items, ContainerService containers,
+                          DrinkService drinks, Lang lang, GuiCategory category, SlotType fluidSlotType) {
         this.plugin = plugin; this.items = items; this.containers = containers; this.drinks = drinks; this.lang = lang;
+        this.category = category; this.fluidSlotType = fluidSlotType;
     }
     public void setRecipes(RecipeRegistry recipes) { this.recipes = recipes; }
     public int stationCount() { return stations.size(); }
-
-    @org.bukkit.event.EventHandler
-    public void onFluidDrag(GuiDragEvent event) {
-        StationDefinition station = byGui.get(event.getGui().name());
-        if (station == null) return;
-        for (int slot : event.getTopSlots()) {
-            if (station.fluidSlots().contains(slot)) {
-                event.setCancelled(true);
-                return;
-            }
-        }
-    }
-
-    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = true)
-    public void onStationInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
-        Gui open = CustomGuiAPI.getOpenGui(player);
-        if (open == null || !byGui.containsKey(open.name())) return;
-        // A shift-click from the player inventory can target any CONTAINER
-        // slot. Block that route so a fluid column cannot become a generic
-        // item container. Top fluid clicks are handled by FunctionalBlock.
-        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
-                && event.getRawSlot() >= event.getView().getTopInventory().getSize()) {
-            event.setCancelled(true);
-        }
-    }
 
     public void closeOpenGuis() {
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -110,7 +96,7 @@ public final class StationManager implements org.bukkit.event.Listener {
             CustomGuiAPI.getFunctionalBlocks().unregisterHandler(blockId);
             CustomGuiAPI.unregisterBlockGui(blockId);
         }
-        stations.clear(); byGui.clear();
+        stations.clear(); byGui.clear(); activeBlockIds.clear(); fluidViews.clear();
         FileConfiguration config = plugin.getConfig();
         List<Integer> defaultFluidSlots = config.getIntegerList("gui.fluid-slots");
         if (defaultFluidSlots.isEmpty()) defaultFluidSlots = List.of(7, 8, 16, 17, 25, 26, 34, 35, 43, 44);
@@ -126,7 +112,7 @@ public final class StationManager implements org.bukkit.event.Listener {
                     Math.max(1, config.getInt(path + ".capacity", 10)), Math.max(0, config.getInt(path + ".water-capacity", 10)),
                     config.getInt(path + ".water-input-slot", 40), config.getInt(path + ".fluid-input-slot", 40),
                     config.getInt(path + ".fuel-slot", 42),
-                    skeletonSlots(config, path, "fluid", defaultFluidSlots),
+                    validFluidSlots(skeletonSlots(config, path, "fluid", defaultFluidSlots)),
                     skeletonSlots(config, path, "craft", config.getIntegerList(path + ".ingredient-slots")),
                     config.getStringList(path + ".blocks"));
             stations.put(station.id(), station); byGui.put(station.gui(), station);
@@ -142,26 +128,25 @@ public final class StationManager implements org.bukkit.event.Listener {
                 plugin.getConfig().getString("gui.filler", "minecraft:black_stained_glass_pane"));
         ItemStack stationFiller = items.create(fillerSpec);
         if (stationFiller.getType().isAir()) stationFiller = filler;
-        dev.moonaticks.customGuiReworked.api.GuiBuilder builder = CustomGuiAPI.builder(station.gui())
-                .title(title).size(54).storage(StorageType.BLOCK);
+        GuiBuilder builder = CustomGuiAPI.builder(station.gui())
+                .title(title).size(54).storage(StorageType.BLOCK).category(category);
         for (int slot = 0; slot < 54; slot++) builder.design(slot, stationFiller);
-        // Fluid columns are real persistent CONTAINER slots, but all player
-        // interaction with them is intercepted by handleClick/onFluidDrag.
-        for (int slot : station.fluidSlots()) {
-            if (slot >= 0 && slot < 54) builder.slot(slot, SlotType.CONTAINER);
-        }
         ConfigurationSection skeleton = plugin.getConfig().getConfigurationSection("stations." + station.id() + ".skeleton");
         if (skeleton == null) {
-            for (int slot : station.ingredientSlots()) builder.slot(slot, SlotType.CRAFT);
-            if (station.id().equals("distiller")) builder.slot(station.fuelSlot(), SlotType.FUEL);
+            for (int slot : station.ingredientSlots()) if (slot >= 0 && slot < 54) builder.slot(slot, SlotType.CRAFT);
+            if (station.id().equals("distiller") && station.fuelSlot() >= 0 && station.fuelSlot() < 54)
+                builder.slot(station.fuelSlot(), SlotType.FUEL);
         } else {
             applySkeleton(builder, skeleton, "craft", SlotType.CRAFT);
             applySkeleton(builder, skeleton, "fuel", SlotType.FUEL);
             applySkeleton(builder, skeleton, "container", SlotType.CONTAINER);
-            // Unlisted slots deliberately remain DESIGN and keep the filler.
         }
-        // Station controls remain custom-handled by FunctionalBlock; fluid
-        // columns are persistent CONTAINER slots with blocked interaction.
+        // Fluid has the final say if a configured skeleton overlaps another
+        // type. Only real ingredients/fuel stay in BLOCK storage.
+        ItemStack emptyGauge = emptyGauge(station);
+        for (int slot : station.fluidSlots()) {
+            builder.slot(slot, fluidSlotType).design(slot, emptyGauge);
+        }
         CustomGuiAPI.registerGui(builder.build(), true);
     }
 
@@ -170,25 +155,80 @@ public final class StationManager implements org.bukkit.event.Listener {
         return config.contains(path) ? config.getIntegerList(path) : fallback;
     }
 
-    private static void applySkeleton(dev.moonaticks.customGuiReworked.api.GuiBuilder builder,
-                                      ConfigurationSection skeleton, String type, SlotType slotType) {
+    private static List<Integer> validFluidSlots(List<Integer> slots) {
+        Set<Integer> valid = new LinkedHashSet<>();
+        for (Integer slot : slots) if (slot != null && slot >= 0 && slot < 54) valid.add(slot);
+        return List.copyOf(valid);
+    }
+
+    private static void applySkeleton(GuiBuilder builder, ConfigurationSection skeleton, String type, SlotType slotType) {
         for (int slot : skeleton.getIntegerList(type)) {
             if (slot >= 0 && slot < 54) builder.slot(slot, slotType);
         }
+    }
+
+    private ItemStack emptyGauge(StationDefinition station) {
+        ItemStack background = items.create(plugin.getConfig().getString("gui.fluid-empty-icon", "minecraft:gray_stained_glass_pane"));
+        if (background.getType().isAir()) background = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        return items.cloneWith(background, "&8◇ &7Пустой резервуар",
+                List.of("&8━━━━━━━━━━━━", "&7Ёмкость: &f" + station.capacity() + " ед.",
+                        "&8Жидкость появится здесь при заполнении."), null);
     }
 
     private void registerFunctionalBlock(StationDefinition station, String blockId) {
         if (blockId == null || blockId.isBlank()) return;
         FunctionalBlock.builder(blockId).gui(station.gui())
                 .canOpen((player, block) -> player.hasPermission("betterthanbrewery.use"))
-                .onOpen((player, block, inventory) -> { updateWorking(station, blockId, block); render(station, blockId, block, player); })
-                .onTick((block, inventory) -> renderAll(station, blockId, block))
-                .onClick((player, block, slot, type, event) -> handleClick(station, blockId, block, player, slot, event))
+                .onOpen((player, block, inventory) -> {
+                    activeBlockIds.put(player.getUniqueId(), blockId);
+                    discardLegacyFluidIcons(station, blockId, block);
+                    updateWorking(station, blockId, block);
+                    // CGR calls onOpen before player.openInventory: its per-viewer
+                    // localDesign API is not available until the next tick.
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        if (hasStationOpen(station, block, player)) {
+                            activeBlockIds.put(player.getUniqueId(), blockId);
+                            render(station, blockId, block, player);
+                        }
+                    });
+                })
+                .onTick((block, inventory) -> {
+                    for (org.bukkit.entity.HumanEntity viewer : inventory.getViewers()) {
+                        if (viewer instanceof Player player && isActiveBlock(player, blockId))
+                            render(station, blockId, block, player);
+                    }
+                })
+                .onClick((player, block, slot, type, event) -> {
+                    if (isActiveBlock(player, blockId)) handleClick(station, blockId, block, player, slot, event);
+                })
                 .onItemChanged((player, block, slot, type, oldItem, newItem) -> {
-                    handleChanged(station, blockId, block, slot);
+                    if (isActiveBlock(player, blockId)) handleChanged(station, blockId, block, slot);
+                })
+                .onClose((player, block) -> {
+                    fluidViews.remove(player.getUniqueId());
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        if (!hasStationOpen(station, block, player))
+                            activeBlockIds.remove(player.getUniqueId(), blockId);
+                    });
                 })
                 .onBlockTick((block, data) -> tick(station, blockId, block, data))
                 .register();
+    }
+
+    /** Remove fake potions saved by older CONTAINER-based fluid columns. */
+    private void discardLegacyFluidIcons(StationDefinition station, String blockId, Location block) {
+        StorageKey key = StorageKey.forBlock(block, station.gui() + ".yml");
+        List<ItemStack> stored = new ArrayList<>(CustomGuiAPI.readStorage(StorageType.BLOCK, key.owner(), key.table()));
+        boolean changed = false;
+        for (int slot : station.fluidSlots()) {
+            if (slot < stored.size() && stored.get(slot) != null && !stored.get(slot).getType().isAir()) {
+                stored.set(slot, new ItemStack(Material.AIR));
+                changed = true;
+            }
+        }
+        if (changed) CustomGuiAPI.writeStorage(StorageType.BLOCK, key.owner(), key.table(), stored);
+        FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
+        if (data != null && !data.getString(LEGACY_FLUID_RENDER, "").isBlank()) data.remove(LEGACY_FLUID_RENDER);
     }
 
     private void handleChanged(StationDefinition station, String blockId, Location block, int slot) {
@@ -346,8 +386,7 @@ public final class StationManager implements org.bukkit.event.Listener {
         }
         boolean fluidSlot = station.fluidSlots().contains(slot);
         if (fluidSlot && (cursor == null || cursor.getType().isAir())) {
-            // Fluid columns are CONTAINER slots for framework persistence, but
-            // their visual contents are never directly movable by a player.
+            // The custom decorative fluid slot cannot be moved or filled with items.
             event.setInteractionCancelled(true);
             return;
         }
@@ -375,12 +414,14 @@ public final class StationManager implements org.bukkit.event.Listener {
         if (isWaterSource(cursor)) {
             event.setInteractionCancelled(true); int units = plugin.getConfig().getInt("water.bucket-units", 4);
             data.setInt(WATER, Math.min(station.waterCapacity(), getInt(data, WATER, 0) + units));
-            replaceOne(player, cursor, items.create("minecraft:bucket")); playInteraction(player, "effects.sound-water"); updateWorking(station, blockId, block); return;
+            replaceOne(player, cursor, items.create("minecraft:bucket")); playInteraction(player, "effects.sound-water");
+            updateWorking(station, blockId, block); scheduleRender(station, blockId, block); return;
         }
         ContainerService.Container container = containers.findEmpty(cursor);
         if (container != null && getInt(data, WATER, 0) >= container.units()) {
             event.setInteractionCancelled(true); data.setInt(WATER, getInt(data, WATER, 0) - container.units());
-            deliver(player, event.getClick(), cursor, drinks.createWater(container)); playInteraction(player, "effects.sound-pour"); updateWorking(station, blockId, block);
+            deliver(player, event.getClick(), cursor, drinks.createWater(container)); playInteraction(player, "effects.sound-pour");
+            updateWorking(station, blockId, block); scheduleRender(station, blockId, block);
         }
     }
 
@@ -390,7 +431,8 @@ public final class StationManager implements org.bukkit.event.Listener {
         // A barrel accepts any BetterThanBrewery-tagged liquid. If there is
         // no ageing recipe, it simply remains a non-ageing liquid.
         event.setInteractionCancelled(true); setFluid(data, tag.id(), Math.min(station.capacity(), tag.units()), tag.quality(), tag.ageWeeks() * plugin.getConfig().getInt("aging.week-ticks", 12096000));
-        replaceOne(player, cursor, new ItemStack(Material.AIR)); playInteraction(player, "effects.sound-pour"); updateWorking(station, blockId, block); return true;
+        replaceOne(player, cursor, new ItemStack(Material.AIR)); playInteraction(player, "effects.sound-pour");
+        updateWorking(station, blockId, block); scheduleRender(station, blockId, block); return true;
     }
 
     private boolean takeFluid(StationDefinition station, String blockId, Location block, Player player, GuiSlotClickEvent event) {
@@ -408,65 +450,114 @@ public final class StationManager implements org.bukkit.event.Listener {
         String resultFluid = barrel == null ? fluid : barrel.outputFluid();
         ItemStack output = resultFluid.equalsIgnoreCase("water") ? drinks.createWater(container) : drinks.createFilled(resultFluid, ageWeeks, getDouble(data, QUALITY, 100), container);
         event.setInteractionCancelled(true); data.setInt(LEVEL, getLevel(data) - container.units());
-        if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); data.remove(FLUID_RENDER); CustomGuiAPI.setWorking(blockId, block, false); }
-        deliver(player, event.getClick(), event.getCursor(), output); plugin.getServer().getScheduler().runTask(plugin, () -> renderAll(station, blockId, block)); return true;
+        if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false); }
+        deliver(player, event.getClick(), event.getCursor(), output); scheduleRender(station, blockId, block); return true;
     }
 
-    private void renderAll(StationDefinition station, String blockId, Location block) { for (Player viewer : CustomGuiAPI.getViewers(block)) render(station, blockId, block, viewer); }
+    private boolean isActiveBlock(Player viewer, String blockId) {
+        return blockId.equals(activeBlockIds.get(viewer.getUniqueId()));
+    }
+
+    private boolean hasStationOpen(StationDefinition station, Location block, Player viewer) {
+        Gui open = CustomGuiAPI.getOpenGui(viewer);
+        Location opened = CustomGuiAPI.getOpenBlockLocation(viewer);
+        return open != null && open.name().equals(station.gui()) && opened != null
+                && opened.getWorld().equals(block.getWorld())
+                && opened.getBlockX() == block.getBlockX()
+                && opened.getBlockY() == block.getBlockY()
+                && opened.getBlockZ() == block.getBlockZ();
+    }
+
+    private void scheduleRender(StationDefinition station, String blockId, Location block) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> renderAll(station, blockId, block));
+    }
+
+    private void renderAll(StationDefinition station, String blockId, Location block) {
+        for (Player viewer : CustomGuiAPI.getViewers(block)) render(station, blockId, block, viewer);
+    }
+
     private void render(StationDefinition station, String blockId, Location block, Player viewer) {
-        FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block); if (data == null) return;
+        if (!isActiveBlock(viewer, blockId) || !hasStationOpen(station, block, viewer)) return;
+        Gui open = CustomGuiAPI.getOpenGui(viewer);
+        FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
+        if (data == null) return;
         RecipeDefinition active = recipes.get(data.getString(RECIPE, ""));
-        String fluid = getFluid(data);
+        String actualFluid = getFluid(data);
+        String fluid = actualFluid;
         int level = getLevel(data);
         if (station.id().equals("barrel") && fluid != null && active != null) fluid = active.outputFluid();
-        boolean preview = fluid == null && station.id().equals("boiler") && active != null && data.getInt(PROGRESS, 0) > 0;
+        int progress = data.getInt(PROGRESS, 0);
+        boolean preview = fluid == null && station.id().equals("boiler") && active != null && progress > 0;
         if (preview) {
             fluid = active.outputFluid();
-            level = Math.max(1, (int) Math.ceil(station.capacity() * data.getInt(PROGRESS, 0) / (double) Math.max(1, active.maxTime())));
-        } else if (fluid == null && (station.id().equals("boiler") || station.id().equals("kettle")) && getInt(data, WATER, 0) > 0) {
+            level = Math.max(1, (int) Math.ceil(station.capacity() * progress / (double) Math.max(1, active.maxTime())));
+        } else if (fluid == null && (station.id().equals("boiler") || station.id().equals("kettle"))
+                && getInt(data, WATER, 0) > 0) {
             fluid = "water";
             level = getInt(data, WATER, 0);
         }
-        ItemStack visual = null;
-        if (fluid != null) {
-            dev.moonaticks.betterThanBrewery.drink.DrinkDefinition fluidDrink = drinks.definition(fluid);
-            String visualName = fluidDrink == null ? (fluid.equalsIgnoreCase("water") ? "&bВода" : fluid) : fluidDrink.name();
-            org.bukkit.Color visualColor = fluidDrink == null ? org.bukkit.Color.AQUA : fluidDrink.color();
-            visual = items.create(plugin.getConfig().getString("gui.fluid-icon", "minecraft:potion"));
-            if (visual.getType().isAir()) visual = new ItemStack(Material.POTION);
-            visual = items.cloneWith(visual, visualName, List.of(), visualColor);
-            double quality = getDouble(data, QUALITY, 100);
-            List<String> fluidLore = new ArrayList<>(List.of("&8", "&7Уровень: &f" + level + "&7/&f" + station.capacity(),
-                    "&7Качество: " + qualityName(quality) + " &8(" + (int) Math.round(quality) + "/100)"));
-            if (station.id().equals("barrel") && active != null) {
-                int barrelAgeWeeks = getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000));
-                fluidLore.add("&7Возраст: &f" + barrelAgeWeeks + " недель");
-                if (active.weeks() > 0) fluidLore.add("&7Рекомендуемая выдержка: &f" + active.weeks() + " недель");
-            }
-            fluidLore.add("&8Забирать можно только пустой тарой.");
-            visual = items.appendLore(visual, fluidLore);
-            visual.setAmount(1);
-        }
-        int visible = fluid == null ? 0 : Math.max(1, Math.min(station.fluidSlots().size(), (int) Math.ceil(station.fluidSlots().size() * level / (double) Math.max(1, station.capacity()))));
+        boolean waterOnly = fluid != null && fluid.equalsIgnoreCase("water") && actualFluid == null && !preview;
         int ageWeeks = Math.max(0, getInt(data, AGE, 0) / Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000)));
-        String renderKey = fluid == null ? "empty" : fluid + "|" + level + "|" + ageWeeks + "|" + Math.round(getDouble(data, QUALITY, 100));
-        if (!renderKey.equals(data.getString(FLUID_RENDER, ""))) {
+        double quality = getDouble(data, QUALITY, 100);
+        String state = fluid == null ? "empty" : fluid + "|" + level + "|" + ageWeeks + "|"
+                + Math.round(quality) + "|" + (active == null ? "" : active.id()) + "|"
+                + (preview ? progress / 20 : 0) + "|" + waterOnly;
+        Inventory inventory = viewer.getOpenInventory().getTopInventory();
+        FluidView last = fluidViews.get(viewer.getUniqueId());
+        boolean newView = last == null || last.inventory() != inventory;
+        if (newView || !last.state().equals(state)) {
+            int visible = fluid == null ? 0 : Math.max(1, Math.min(station.fluidSlots().size(),
+                    (int) Math.ceil(station.fluidSlots().size() * level / (double) station.capacity())));
+            ItemStack icon = fluid == null ? null : fluidIcon(station, fluid, level, quality, active,
+                    ageWeeks, preview, waterOnly, progress);
+            // Slots in the config run from top to bottom: fill from the bottom.
             for (int index = 0; index < station.fluidSlots().size(); index++) {
-                setSlotItem(station, blockId, block, station.fluidSlots().get(index), index < visible ? visual : null);
+                CustomGuiAPI.setLocalDesign(viewer, block, station.fluidSlots().get(index),
+                        index >= station.fluidSlots().size() - visible ? icon : null);
             }
-            data.set(FLUID_RENDER, renderKey);
+            fluidViews.put(viewer.getUniqueId(), new FluidView(inventory, state));
         }
-        if (station.id().equals("boiler") || station.id().equals("kettle")) {
-            ItemStack waterIcon = items.create(plugin.getConfig().getString("gui.water-icon", "minecraft:potion_water"));
-            waterIcon = items.appendLore(waterIcon, List.of("&7Нажмите с ведром, чтобы наполнить.", "&7Пустая тара заберёт воду по единицам."));
-            CustomGuiAPI.setLocalDesign(viewer, block, station.waterSlot(), waterIcon);
+        if (newView) {
+            boolean waterStation = station.id().equals("boiler") || station.id().equals("kettle");
+            int controlSlot = waterStation ? station.waterSlot() : station.fluidInputSlot();
+            if (controlSlot >= 0 && controlSlot < open.slots() && !station.fluidSlots().contains(controlSlot)
+                    && open.slotType(controlSlot).allowsLocalDesign()) {
+                ItemStack control = items.create(plugin.getConfig().getString(waterStation ? "gui.water-icon" : "gui.input-icon",
+                        waterStation ? "minecraft:potion_water" : "minecraft:glass_bottle"));
+                if (control.getType().isAir()) control = new ItemStack(waterStation ? Material.POTION : Material.GLASS_BOTTLE);
+                control = items.appendLore(control, waterStation
+                        ? List.of("&7Нажмите с ведром, чтобы наполнить.", "&7Пустая тара заберёт воду по единицам.")
+                        : List.of("&7Перелейте сюда готовую жидкость.", "&8Она будет принята только в пустом состоянии."));
+                CustomGuiAPI.setLocalDesign(viewer, block, controlSlot, control);
+            }
+        }
+    }
+
+    private ItemStack fluidIcon(StationDefinition station, String fluid, int level, double quality,
+                                RecipeDefinition active, int ageWeeks, boolean preview, boolean waterOnly, int progress) {
+        dev.moonaticks.betterThanBrewery.drink.DrinkDefinition drink = drinks.definition(fluid);
+        String name = drink == null ? (fluid.equalsIgnoreCase("water") ? "&bВода" : fluid) : drink.name();
+        org.bukkit.Color color = drink == null ? org.bukkit.Color.AQUA : drink.color();
+        ItemStack icon = items.create(plugin.getConfig().getString("gui.fluid-icon", "minecraft:potion"));
+        if (icon.getType().isAir()) icon = new ItemStack(Material.POTION);
+        icon = items.cloneWith(icon, name, List.of(), color);
+        int filled = Math.max(0, Math.min(10, (int) Math.ceil(10.0 * level / station.capacity())));
+        String tint = fluid.equalsIgnoreCase("water") ? "&b" : "&6";
+        List<String> lore = new ArrayList<>(List.of("&8━━━━━━━━━━━━", "&7Объём: &f" + level + "&7/&f"
+                + station.capacity() + " ед.", tint + "▰".repeat(filled) + "&8" + "▱".repeat(10 - filled)));
+        if (preview) {
+            lore.add("&eВарится: &f" + progress / 20 + " с &8/ &f" + active.idealTime() / 20 + " с");
+            lore.add("&8Напиток будет готов к идеальному времени.");
+        } else if (waterOnly) {
+            lore.add("&8Заберите воду в слоте подачи воды.");
         } else {
-            ItemStack inputIcon = items.create(plugin.getConfig().getString("gui.input-icon", "minecraft:glass_bottle"));
-            inputIcon = items.appendLore(inputIcon, List.of("&7Перелейте сюда готовую жидкость.", "&8Она будет принята только в пустом состоянии."));
-            CustomGuiAPI.setLocalDesign(viewer, block, station.fluidInputSlot(), inputIcon);
+            lore.add("&7Качество: " + qualityName(quality) + " &8(" + (int) Math.round(quality) + "/100)");
+            if (station.id().equals("barrel") && active != null) {
+                lore.add("&7Выдержка: &f" + ageWeeks + " нед. &8/ &f" + active.weeks() + " нед.");
+            }
+            lore.add("&8Нажмите с пустой тарой, чтобы налить.");
         }
-        String title = offset(ColorUtil.color(plugin.getConfig().getString("gui." + station.id() + "-title", station.id())), plugin.getConfig().getInt("gui.title-offset", 0));
-        CustomGuiAPI.setLocalTitle(viewer, block, title);
+        return items.appendLore(icon, lore);
     }
 
     private void produceByproducts(Location block, RecipeDefinition recipe) {

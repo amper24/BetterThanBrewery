@@ -1,4 +1,4 @@
-# BetterThanBrewery — Paper 26.2 / CustomGuiReworked 2.x
+# BetterThanBrewery — Paper 26.2 / CustomGuiReworked 2.4.5+
 # All durations are ticks unless a key explicitly ends with -seconds.
 settings:
   locale: ru
@@ -17,11 +17,14 @@ gui:
   filler: minecraft:black_stained_glass_pane
   water-icon: minecraft:potion_water
   input-icon: minecraft:glass_bottle
-  # Stored only as a safe visual in fluid CONTAINER slots; it has no drink tag.
+  # Per-viewer liquid gauge (not saved as an item and never dropped on break).
   fluid-icon: minecraft:potion
+  fluid-empty-icon: minecraft:gray_stained_glass_pane
+  # Listed from top to bottom; the gauge fills from the bottom upwards.
   fluid-slots: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
 
-# Recipe book. A custom ID has two prefixes: provider and namespace.
+# Standalone read-only Bukkit recipe book (not registered in CGR).
+# A custom ID has two prefixes: provider and namespace.
 # Example: itemsadder:brewery:recipe_book means the ItemsAdder item brewery:recipe_book.
 # Supported provider prefixes: itemsadder:, ia:, craftengine: and ce:.
 # A plain namespaced ID (brewery:recipe_book) tries ItemsAdder and CraftEngine.
@@ -75,7 +78,7 @@ stations:
     # minecraft:item, itemsadder:namespace:item or craftengine:namespace:item.
     # filler: "itemsadder:brewery:boiler_filler"
     skeleton:
-      # Fluid columns are persistent CONTAINER slots with custom blocked behavior.
+      # Fluid columns use the non-persistent betterthanbrewery:fluid custom SlotType.
       fluid: [7, 8, 16, 17, 25, 26, 34, 35, 43, 44]
       # Every other slot not listed here stays DESIGN and displays the filler.
       craft: [10, 11, 12, 13, 14, 15]

@@ -10,9 +10,13 @@ import dev.moonaticks.betterThanBrewery.item.ItemService;
 import dev.moonaticks.betterThanBrewery.recipe.RecipeBookManager;
 import dev.moonaticks.betterThanBrewery.recipe.RecipeLoader;
 import dev.moonaticks.betterThanBrewery.recipe.RecipeRegistry;
+import dev.moonaticks.betterThanBrewery.station.BreweryGuiTypes;
 import dev.moonaticks.betterThanBrewery.station.StationManager;
 import dev.moonaticks.customGuiReworked.api.CustomGuiAPI;
+import dev.moonaticks.customGuiReworked.api.GuiCategory;
+import dev.moonaticks.customGuiReworked.api.SlotType;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class BetterThanBrewery extends JavaPlugin {
@@ -28,19 +32,23 @@ public final class BetterThanBrewery extends JavaPlugin {
     private DrunkennessManager drunkenness;
 
     @Override public void onEnable() {
-        if (!CustomGuiAPI.isInitialized()) {
-            getLogger().severe("CustomGuiReworked 2.x is required; disabling BetterThanBrewery.");
+        Plugin cgr = Bukkit.getPluginManager().getPlugin("CustomGuiReworked");
+        if (cgr == null || !cgr.isEnabled() || !supportsGuiApi(cgr.getDescription().getVersion())
+                || !CustomGuiAPI.isInitialized()) {
+            getLogger().severe("CustomGuiReworked 2.4.5+ is required; disabling BetterThanBrewery.");
             Bukkit.getPluginManager().disablePlugin(this); return;
         }
+        GuiCategory category = CustomGuiAPI.registerCategory(BreweryGuiTypes.stationCategory());
+        SlotType fluidSlot = CustomGuiAPI.registerSlotType(BreweryGuiTypes.fluidSlot());
         configs = new ConfigManager(this); configs.load(); lang = new Lang(configs);
         items = new ItemService(this); containers = new ContainerService(items); containers.load(getConfig());
         recipeLoader = new RecipeLoader(getLogger()); recipes = recipeLoader.load(configs.recipesFolder());
         drinks = new DrinkService(this, items, containers); drinks.setRegistry(recipes);
-        stations = new StationManager(this, items, containers, drinks, lang); stations.setRecipes(recipes); stations.registerAll();
-        recipeBook = new RecipeBookManager(this::getConfig, items); recipeBook.setRecipes(recipes); recipeBook.registerAll();
+        stations = new StationManager(this, items, containers, drinks, lang, category, fluidSlot);
+        stations.setRecipes(recipes); stations.registerAll();
+        recipeBook = new RecipeBookManager(this, items); recipeBook.setRecipes(recipes);
         drunkenness = new DrunkennessManager(this); drunkenness.load(); drunkenness.start();
         Bukkit.getPluginManager().registerEvents(recipeBook, this);
-        Bukkit.getPluginManager().registerEvents(stations, this);
         Bukkit.getPluginManager().registerEvents(new DrinkListener(drinks, drunkenness), this);
         Bukkit.getPluginManager().registerEvents(drunkenness, this);
         if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
@@ -50,6 +58,7 @@ public final class BetterThanBrewery extends JavaPlugin {
 
     public void reloadPlugin() {
         stations.closeOpenGuis();
+        recipeBook.closeOpenGuis();
         configs.reload();
         containers.load(getConfig());
         recipes = recipeLoader.load(configs.recipesFolder());
@@ -58,12 +67,29 @@ public final class BetterThanBrewery extends JavaPlugin {
         stations.setRecipes(recipes);
         stations.registerAll();
         recipeBook.setRecipes(recipes);
-        recipeBook.registerAll();
     }
     @Override public void onDisable() {
-        if (recipeBook != null && CustomGuiAPI.isInitialized()) recipeBook.closeOpenGuis();
-        if (stations != null && CustomGuiAPI.isInitialized()) stations.closeOpenGuis();
-        if (CustomGuiAPI.isInitialized()) CustomGuiAPI.getFunctionalBlocks().tickDataSave();
+        if (recipeBook != null) recipeBook.closeOpenGuis();
+        Plugin cgr = Bukkit.getPluginManager().getPlugin("CustomGuiReworked");
+        if (cgr != null && cgr.isEnabled() && CustomGuiAPI.isInitialized()) {
+            if (stations != null) {
+                stations.closeOpenGuis();
+                CustomGuiAPI.unregisterSlotType(BreweryGuiTypes.FLUID_ID);
+            }
+            CustomGuiAPI.getFunctionalBlocks().tickDataSave();
+        }
     }
     public RecipeRegistry recipes() { return recipes; }
+
+    private static boolean supportsGuiApi(String version) {
+        try {
+            String[] parts = version.split("[.-]");
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = Integer.parseInt(parts[2]);
+            return major > 2 || major == 2 && (minor > 4 || minor == 4 && patch >= 5);
+        } catch (RuntimeException ex) {
+            return false;
+        }
+    }
 }
