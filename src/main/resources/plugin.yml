@@ -15,7 +15,7 @@ commands:
   betterbrewery:
     description: BetterThanBrewery administration
     aliases: [brewery, btb]
-    usage: /betterbrewery <reload|info>
+    usage: /betterbrewery <reload|info|drunk>
     permission: betterthanbrewery.admin
 permissions:
   betterthanbrewery.admin:

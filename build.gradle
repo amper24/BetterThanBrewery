@@ -61,6 +61,16 @@ tasks.named('test', Test) {
     }
 }
 
+// A separate, installable client pack: do not put assets/ inside the plugin JAR.
+tasks.register('resourcePack', Zip) {
+    group = 'distribution'
+    description = 'Package the optional 26.2 intoxication HUD resource pack'
+    from('resource-pack')
+    archiveFileName = 'BetterThanBrewery-intoxication-26.2.zip'
+    destinationDirectory = layout.buildDirectory.dir('resource-pack')
+}
+tasks.named('build') { dependsOn(tasks.named('resourcePack')) }
+
 processResources {
     def props = [version: version]
     inputs.properties props

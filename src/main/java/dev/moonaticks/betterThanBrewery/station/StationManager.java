@@ -5,6 +5,7 @@ import dev.moonaticks.betterThanBrewery.config.Lang;
 import dev.moonaticks.betterThanBrewery.drink.DrinkService;
 import dev.moonaticks.betterThanBrewery.item.ContainerService;
 import dev.moonaticks.betterThanBrewery.item.DrinkTags;
+import dev.moonaticks.betterThanBrewery.item.ItemDelivery;
 import dev.moonaticks.betterThanBrewery.item.ItemService;
 import dev.moonaticks.betterThanBrewery.recipe.Byproduct;
 import dev.moonaticks.betterThanBrewery.recipe.Ingredient;
@@ -35,6 +36,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.potion.PotionType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,6 +63,7 @@ public final class StationManager {
     private static final String LEGACY_FLUID_RENDER = "fluid-render";
 
     private record FluidView(Inventory inventory, String state) { }
+    private record WaterSource(int units, ItemStack empty) { }
 
     private final BetterThanBrewery plugin;
     private final ItemService items;
@@ -403,7 +408,8 @@ public final class StationManager {
         if (fluidSlot && cursor != null && !cursor.getType().isAir()) {
             RecipeDefinition recipe = recipes.get(CustomGuiAPI.blockData(blockId, block).getString(RECIPE, ""));
             FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
-            if (station.id().equals("boiler") && getFluid(data) == null && recipe != null && data.getInt(PROGRESS, 0) > 0) {
+            if (station.id().equals("boiler") && getFluid(data) == null && recipe != null
+                    && containers.findEmpty(cursor) != null && data.getInt(PROGRESS, 0) > 0) {
                 if (data.getInt(PROGRESS, 0) < recipe.idealTime()) { event.setInteractionCancelled(true); player.sendMessage(lang.text("not-ready", Map.of("time", Integer.toString(recipe.idealTime())))); return; }
                 finishBoiler(station, blockId, block, data, recipe);
             }
@@ -415,32 +421,58 @@ public final class StationManager {
     private void handleWater(StationDefinition station, String blockId, Location block, Player player, GuiSlotClickEvent event) {
         ItemStack cursor = event.getCursor(); if (cursor == null || cursor.getType().isAir()) return;
         FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
-        if (isWaterSource(cursor)) {
-            event.setInteractionCancelled(true); int units = plugin.getConfig().getInt("water.bucket-units", 4);
-            data.setInt(WATER, Math.min(station.waterCapacity(), getInt(data, WATER, 0) + units));
-            replaceOne(player, cursor, items.create("minecraft:bucket")); playInteraction(player, "effects.sound-water");
+        if (data == null) return;
+        WaterSource source = waterSource(cursor);
+        if (source != null) {
+            event.setInteractionCancelled(true);
+            if (!FluidTransfer.fits(getInt(data, WATER, 0), station.waterCapacity(), source.units())) {
+                lang.send(player, "not-enough-space"); return;
+            }
+            if (source.empty() == null || source.empty().getType().isAir()) {
+                lang.send(player, "unavailable-container"); return;
+            }
+            data.setInt(WATER, getInt(data, WATER, 0) + source.units());
+            replaceOne(player, cursor, source.empty()); playInteraction(player, "effects.sound-water");
             updateWorking(station, blockId, block); scheduleRender(station, blockId, block); return;
         }
         ContainerService.Container container = containers.findEmpty(cursor);
-        if (container != null && getInt(data, WATER, 0) >= container.units()) {
-            event.setInteractionCancelled(true); data.setInt(WATER, getInt(data, WATER, 0) - container.units());
-            deliver(player, event.getClick(), cursor, drinks.createWater(container)); playInteraction(player, "effects.sound-pour");
-            updateWorking(station, blockId, block); scheduleRender(station, blockId, block);
-        }
+        if (container == null) return;
+        event.setInteractionCancelled(true);
+        if (getInt(data, WATER, 0) < container.units()) { lang.send(player, "not-enough-fluid"); return; }
+        ItemStack output = drinks.createWater(container);
+        if (output.getType().isAir()) { lang.send(player, "unavailable-container"); return; }
+        data.setInt(WATER, getInt(data, WATER, 0) - container.units());
+        deliver(player, event.getClick(), cursor, output); playInteraction(player, "effects.sound-pour");
+        updateWorking(station, blockId, block); scheduleRender(station, blockId, block);
     }
 
     private boolean acceptFluid(StationDefinition station, String blockId, Location block, Player player, GuiSlotClickEvent event) {
         ItemStack cursor = event.getCursor(); DrinkTags.Tag tag = drinks.read(cursor); if (tag == null) return false;
-        FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block); if (getFluid(data) != null) return false;
-        // A barrel accepts any BetterThanBrewery-tagged liquid. If there is
-        // no ageing recipe, it simply remains a non-ageing liquid.
-        event.setInteractionCancelled(true); setFluid(data, tag.id(), Math.min(station.capacity(), tag.units()), tag.quality(), tag.ageWeeks() * plugin.getConfig().getInt("aging.week-ticks", 12096000));
-        replaceOne(player, cursor, new ItemStack(Material.AIR)); playInteraction(player, "effects.sound-pour");
+        event.setInteractionCancelled(true);
+        FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
+        if (data == null) return true;
+        String fluid = getFluid(data);
+        if (!tag.id().equalsIgnoreCase("water") && drinks.definition(tag.id()) == null) {
+            lang.send(player, "unavailable-drink"); return true;
+        }
+        if (fluid != null && !fluid.equalsIgnoreCase(tag.id())) { lang.send(player, "different-fluid"); return true; }
+        int current = fluid == null ? 0 : getLevel(data);
+        if (!FluidTransfer.fits(current, station.capacity(), tag.units())) { lang.send(player, "not-enough-space"); return true; }
+        ItemStack empty = drinks.emptyFor(cursor);
+        if (empty.getType().isAir()) { lang.send(player, "unavailable-container"); return true; }
+        // Same-fluid top-ups are weighted by volume: age/quality cannot be duplicated.
+        int weekTicks = Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000));
+        int incomingAge = (int) Math.min(Integer.MAX_VALUE, (long) Math.max(0, tag.ageWeeks()) * weekTicks);
+        FluidTransfer.Mixture mixture = FluidTransfer.mix(current, getDouble(data, QUALITY, 100), getInt(data, AGE, 0),
+                tag.units(), tag.quality(), incomingAge);
+        setFluid(data, tag.id(), mixture.units(), mixture.quality(), mixture.ageTicks());
+        replaceOne(player, cursor, empty); playInteraction(player, "effects.sound-pour");
         updateWorking(station, blockId, block); scheduleRender(station, blockId, block); return true;
     }
 
     private boolean takeFluid(StationDefinition station, String blockId, Location block, Player player, GuiSlotClickEvent event) {
         FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
+        if (data == null) return false;
         String fluid = getFluid(data); if (fluid == null || getLevel(data) <= 0) return false;
         ContainerService.Container container = containers.findEmpty(event.getCursor()); if (container == null) return false;
         if (getLevel(data) < container.units()) { event.setInteractionCancelled(true); lang.send(player, "not-enough-fluid"); return true; }
@@ -453,7 +485,9 @@ public final class StationManager {
         }
         String resultFluid = barrel == null ? fluid : barrel.outputFluid();
         ItemStack output = resultFluid.equalsIgnoreCase("water") ? drinks.createWater(container) : drinks.createFilled(resultFluid, ageWeeks, getDouble(data, QUALITY, 100), container);
-        event.setInteractionCancelled(true); data.setInt(LEVEL, getLevel(data) - container.units());
+        event.setInteractionCancelled(true);
+        if (output == null || output.getType().isAir()) { lang.send(player, "unavailable-drink"); return true; }
+        data.setInt(LEVEL, getLevel(data) - container.units());
         if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false); }
         deliver(player, event.getClick(), event.getCursor(), output); scheduleRender(station, blockId, block); return true;
     }
@@ -651,7 +685,48 @@ public final class StationManager {
         Sound resolved = Registry.SOUNDS.get(key);
         return resolved == null ? fallback : resolved;
     }
-    private boolean isWaterSource(ItemStack item) { for (String spec : plugin.getConfig().getStringList("water.source-items")) if (items.matches(item, spec)) return true; return false; }
+    private WaterSource waterSource(ItemStack item) {
+        DrinkTags.Tag drink = drinks.read(item);
+        if (drink != null) return drink.id().equalsIgnoreCase("water")
+                ? new WaterSource(drink.units(), drinks.emptyFor(item)) : null;
+        // Legacy string entries work for vanilla buckets/potions; custom sources
+        // must specify both their volume and their empty item in a map.
+        for (Object entry : plugin.getConfig().getList("water.source-items", List.of())) {
+            String spec, empty;
+            int units;
+            if (entry instanceof Map<?, ?> source) {
+                spec = source.get("item") == null ? "" : String.valueOf(source.get("item"));
+                empty = source.get("empty") == null ? "" : String.valueOf(source.get("empty"));
+                units = positiveInt(source.get("units"), 1);
+            } else {
+                spec = String.valueOf(entry);
+                if (spec.equalsIgnoreCase("minecraft:water_bucket")) {
+                    empty = "minecraft:bucket";
+                    units = Math.max(1, plugin.getConfig().getInt("water.bucket-units", 4));
+                } else if (spec.equalsIgnoreCase("minecraft:potion_water")) {
+                    empty = "minecraft:glass_bottle";
+                    units = 1;
+                } else continue;
+            }
+            boolean matches = spec.equalsIgnoreCase("minecraft:potion_water")
+                    ? isPlainWaterPotion(item) : items.matches(item, spec);
+            if (matches) return new WaterSource(units, items.create(empty));
+        }
+        return null;
+    }
+
+    private static boolean isPlainWaterPotion(ItemStack item) {
+        if (item == null || item.getType() != Material.POTION) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (!(meta instanceof PotionMeta potion) || meta.hasDisplayName() || meta.hasLore()
+                || !meta.getPersistentDataContainer().isEmpty() || potion.hasCustomEffects() || potion.hasColor()) return false;
+        return potion.getBasePotionType() == null || potion.getBasePotionType() == PotionType.WATER;
+    }
+
+    private static int positiveInt(Object raw, int fallback) {
+        try { return Math.max(1, Integer.parseInt(String.valueOf(raw))); }
+        catch (NumberFormatException ex) { return fallback; }
+    }
     private boolean hasFinishedOutput(StationDefinition station, FunctionalBlockData data) { return getFluid(data) != null && (station.id().equals("boiler") || station.id().equals("kettle") || station.id().equals("distiller")); }
     private static String getFluid(FunctionalBlockData data) { String fluid = data.getString(FLUID, ""); return fluid.isBlank() ? null : fluid; }
     private static int getLevel(FunctionalBlockData data) { return data.getInt(LEVEL, 0); }
@@ -669,13 +744,17 @@ public final class StationManager {
 
     private void replaceOne(Player player, ItemStack cursor, ItemStack replacement) {
         if (cursor.getAmount() <= 1) player.setItemOnCursor(replacement);
-        else { ItemStack rest = cursor.clone(); rest.setAmount(rest.getAmount() - 1); player.setItemOnCursor(rest); player.getInventory().addItem(replacement); }
+        else {
+            ItemStack rest = cursor.clone(); rest.setAmount(rest.getAmount() - 1);
+            player.setItemOnCursor(rest);
+            ItemDelivery.giveOrDrop(player, replacement);
+        }
     }
     private void deliver(Player player, ClickType click, ItemStack cursor, ItemStack output) {
         if (cursor.getAmount() <= 1 && !click.isShiftClick()) player.setItemOnCursor(output);
         else {
             ItemStack rest = cursor.clone(); rest.setAmount(rest.getAmount() - 1); player.setItemOnCursor(rest.getAmount() <= 0 ? new ItemStack(Material.AIR) : rest);
-            Map<Integer, ItemStack> overflow = player.getInventory().addItem(output); for (ItemStack left : overflow.values()) player.getWorld().dropItemNaturally(player.getLocation(), left);
+            ItemDelivery.giveOrDrop(player, output);
         }
         player.playSound(player.getLocation(), configuredSound("effects.sound-take", Sound.ITEM_BOTTLE_FILL), 1, 1);
     }

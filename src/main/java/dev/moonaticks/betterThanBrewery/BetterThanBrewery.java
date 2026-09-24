@@ -47,11 +47,13 @@ public final class BetterThanBrewery extends JavaPlugin {
         stations = new StationManager(this, items, containers, drinks, lang, category, fluidSlot);
         stations.setRecipes(recipes); stations.registerAll();
         recipeBook = new RecipeBookManager(this, items); recipeBook.setRecipes(recipes);
-        drunkenness = new DrunkennessManager(this); drunkenness.load(); drunkenness.start();
+        drunkenness = new DrunkennessManager(this); drunkenness.load();
         Bukkit.getPluginManager().registerEvents(recipeBook, this);
         Bukkit.getPluginManager().registerEvents(new DrinkListener(drinks, drunkenness), this);
         Bukkit.getPluginManager().registerEvents(drunkenness, this);
-        if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
+        Bukkit.getPluginManager().registerEvents(drunkenness.overlay(), this);
+        drunkenness.start();
+        if (getCommand("betterbrewery") != null) { BetterBreweryCommand command = new BetterBreweryCommand(this, lang, stations, drunkenness); getCommand("betterbrewery").setExecutor(command); getCommand("betterbrewery").setTabCompleter(command); }
         Bukkit.getScheduler().runTaskTimer(this, () -> CustomGuiAPI.getFunctionalBlocks().tickDataSave(), 200, Math.max(40, getConfig().getInt("settings.autosave-ticks", 200)));
         getLogger().info("BetterThanBrewery enabled: " + recipes.size() + " recipes, " + recipes.drinkCount() + " drinks, " + stations.stationCount() + " stations.");
     }
@@ -69,6 +71,7 @@ public final class BetterThanBrewery extends JavaPlugin {
         recipeBook.setRecipes(recipes);
     }
     @Override public void onDisable() {
+        if (drunkenness != null) drunkenness.shutdown();
         if (recipeBook != null) recipeBook.closeOpenGuis();
         Plugin cgr = Bukkit.getPluginManager().getPlugin("CustomGuiReworked");
         if (cgr != null && cgr.isEnabled() && CustomGuiAPI.isInitialized()) {

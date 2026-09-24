@@ -9,6 +9,7 @@ import dev.moonaticks.betterThanBrewery.util.ColorUtil;
 import dev.moonaticks.betterThanBrewery.util.Formula;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
@@ -42,39 +43,77 @@ public final class DrinkService {
         return createFilled(fluidId, ageWeeks, quality, containers.all().isEmpty() ? null : containers.all().get(0));
     }
     public ItemStack createFilled(String fluidId, int ageWeeks, double quality, ContainerService.Container container) {
+        // A missing recipe must never silently turn a full tank into water.
         DrinkDefinition drink = registry.drink(fluidId);
-        if (drink == null) return createWater(container);
+        if (drink == null) return new ItemStack(Material.AIR);
         Prepared prepared = prepare(drink, ageWeeks, quality);
-        ItemStack item = prepared.itemSpec().isBlank()
-                ? items.create(container == null ? "minecraft:potion" : container.filled())
-                : items.create(prepared.itemSpec());
+        String spec = container == null ? "minecraft:potion" : container.filled();
+        if ((container == null || container.useDrinkItem()) && !prepared.itemSpec().isBlank()) spec = prepared.itemSpec();
+        ItemStack item = items.create(spec);
+        if (item == null || item.getType().isAir()) return new ItemStack(Material.AIR);
         item = items.cloneWith(item, prepared.name(), prepared.lore(), drink.color());
-        tags.write(item, drink.id(), ageWeeks, prepared.alcohol(), quality, container == null ? 1 : container.units());
+        tags.write(item, drink.id(), ageWeeks, prepared.alcohol(), quality,
+                container == null ? 1 : container.units(), container == null ? "" : container.id());
         return item;
     }
     public ItemStack createWater() { return createWater(containers.all().isEmpty() ? null : containers.all().get(0)); }
     public ItemStack createWater(ContainerService.Container container) {
         String spec = container == null ? "minecraft:potion" : container.filled();
         ItemStack item = items.create(spec);
+        if (item == null || item.getType().isAir()) return new ItemStack(Material.AIR);
         item = items.cloneWith(item, plugin.getConfig().getString("water.bottle-name", "&bВода"), List.of(), org.bukkit.Color.AQUA);
-        if (item.getItemMeta() != null) {
-            ItemMeta meta = item.getItemMeta(); meta.getPersistentDataContainer().set(waterKey, PersistentDataType.BYTE, (byte) 1); item.setItemMeta(meta);
+        tags.write(item, "water", 0, 0, 100, container == null ? 1 : container.units(),
+                container == null ? "" : container.id());
+        // Keep the old marker too, so items and older installations coexist.
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(waterKey, PersistentDataType.BYTE, (byte) 1);
+            item.setItemMeta(meta);
         }
         return item;
     }
-    public DrinkTags.Tag read(ItemStack item) { return tags.read(item); }
+    public DrinkTags.Tag read(ItemStack item) {
+        DrinkTags.Tag tag = tags.read(item);
+        if (tag != null) return tag;
+        // Water produced by older versions did not have the drink/container tags.
+        if (item == null || item.getItemMeta() == null || !item.getItemMeta().getPersistentDataContainer().has(waterKey, PersistentDataType.BYTE)) return null;
+        return new DrinkTags.Tag("water", 0, 0, 100, 1, "");
+    }
     public DrinkDefinition definition(String id) { return registry.drink(id); }
 
+    /** Paper replaces the consumed potion in the correct hand (including the offhand). */
     public void consume(PlayerItemConsumeEvent event, DrunkennessSink drunkenness) {
+        if (read(event.getItem()) == null) return;
+        event.setReplacement(emptyFor(event.getItem()));
         consumeItem(event.getPlayer(), event.getItem(), drunkenness);
     }
+    public ItemStack emptyFor(ItemStack filled) {
+        DrinkTags.Tag tag = read(filled);
+        if (tag != null) {
+            ContainerService.Container container = containers.byId(tag.containerId());
+            if (container != null) {
+                ItemStack empty = containers.createEmpty(container);
+                if (empty != null && !empty.getType().isAir()) return empty;
+            }
+        }
+        // Best-effort compatibility for drinks made before the container ID existed.
+        if (filled != null && (filled.getType() == Material.POTION || filled.getType() == Material.HONEY_BOTTLE)) return items.create("minecraft:glass_bottle");
+        if (filled != null && filled.getType() == Material.MILK_BUCKET) return items.create("minecraft:bucket");
+        return new ItemStack(Material.AIR);
+    }
     public void consumeItem(Player player, ItemStack item, DrunkennessSink drunkenness) {
-        DrinkTags.Tag tag = tags.read(item);
+        DrinkTags.Tag tag = read(item);
         if (tag == null) return;
+        if (tag.id().equalsIgnoreCase("water")) {
+            double sobering = Math.max(0, plugin.getConfig().getDouble("drunkenness.water-sobering", 4));
+            if (drunkenness != null && sobering > 0) drunkenness.add(player, -sobering * tag.units());
+            return;
+        }
         DrinkDefinition drink = registry.drink(tag.id());
         if (drink == null) return;
         Prepared prepared = prepare(drink, tag.ageWeeks(), tag.quality());
         Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()) return;
             if (prepared.food() > 0) player.setFoodLevel(Math.min(20, player.getFoodLevel() + prepared.food()));
             for (DrinkEffect effect : drink.effects()) {
                 if (ThreadLocalRandom.current().nextDouble() > effect.chance()) continue;

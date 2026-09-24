@@ -3,6 +3,8 @@
 settings:
   locale: ru
   autosave-ticks: 200
+  # Enable after hosting the resource-pack ZIP and setting drunkenness.visual.url/sha1.
+  # Without the pack, actionbar / potion effects continue to work as usual.
   use-resource-pack-overlays: false
   debug: false
 
@@ -146,17 +148,33 @@ containers:
     empty: minecraft:glass_bottle
     filled: minecraft:potion
     units: 1
-    # Additional pairs may use CraftEngine or ItemsAdder ids.
+    # Respect output.item from a recipe when it exists. For other vessels,
+    # their own filled item normally takes priority over the recipe's skin.
+    use-drink-item: true
   cup:
     empty: minecraft:bowl
     filled: minecraft:potion
     units: 1
+    use-drink-item: false
+    # For a real cup texture, use your ItemsAdder/CraftEngine filled-item ID.
+  # Example: a 2-unit custom mug (both IDs must be available on the server):
+  # mug:
+  #   empty: itemsadder:brewery:empty_mug
+  #   filled: itemsadder:brewery:filled_mug
+  #   units: 2
+  #   use-drink-item: false
 
 water:
+  # All sources must say how many units they supply and what empty item they return.
+  # Older lists of vanilla string IDs are also supported (bucket=4, potion=1).
   source-items:
-    - minecraft:water_bucket
-    - minecraft:potion_water
-  bucket-units: 4
+    - item: minecraft:water_bucket
+      units: 4
+      empty: minecraft:bucket
+    - item: minecraft:potion_water
+      units: 1
+      empty: minecraft:glass_bottle
+  bucket-units: 4 # for legacy string-based source-items lists
   bottle-name: "&bВода"
 
 aging:
@@ -168,16 +186,21 @@ aging:
 drunkenness:
   enabled: true
   decay-per-minute: 2.0
+  water-sobering: 4.0 # per container unit of BetterThanBrewery water
   update-ticks: 20
   max: 100
+  # Each overlay-glyph is a private character in the included pack font.
+  # Set it to "" for a stage that should not draw an overlay.
   stages:
     - min: 1
       max: 19
+      overlay-glyph: "\uE101"
       actionbar: "&7Лёгкое опьянение &f{value}/100"
       sway-chance: 0.08
       sway-degrees: 0.7
     - min: 20
       max: 49
+      overlay-glyph: "\uE102"
       actionbar: "&eТепло разливается по телу &f{value}/100"
       sway-chance: 0.16
       sway-degrees: 1.2
@@ -187,6 +210,7 @@ drunkenness:
           amplifier: 0
     - min: 50
       max: 79
+      overlay-glyph: "\uE103"
       actionbar: "&6Мир слегка плывёт &f{value}/100"
       sway-chance: 0.24
       sway-degrees: 1.8
@@ -199,6 +223,7 @@ drunkenness:
           amplifier: 0
     - min: 80
       max: 100
+      overlay-glyph: "\uE104"
       actionbar: "&cВы уже очень пьяны &f{value}/100"
       sway-chance: 0.35
       sway-degrees: 2.4
@@ -209,12 +234,18 @@ drunkenness:
         - type: SLOW
           duration: 80
           amplifier: 1
-      overlay-command: "tellraw {player} {\"text\":\"\u26a0\",\"color\":\"dark_red\"}"
+      # overlay-command: "say {player} достиг тяжёлого опьянения"
       chat-replacements:
         a: "а-а"
         о: "о..."
-  # Optional client resource-pack overlay. It is only requested on a stage change.
-  resource-pack: ""
+  visual:
+    # Build with ./gradlew resourcePack. Host the resulting ZIP over HTTPS;
+    # use the SHA-1 of the ZIP (sha1sum), NOT the PNG or the plugin JAR.
+    # The pack is added once on join and removed on disable/reload when changed.
+    url: ""
+    sha1: ""
+    prompt: "BetterThanBrewery: атмосферный эффект опьянения"
+    refresh-ticks: 40 # title overlays use the title layer; see README for limitations
   voice:
     enabled: false
     min-pitch: 0.82

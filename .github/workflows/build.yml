@@ -24,7 +24,9 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
       - name: Test and build
-        run: ./gradlew clean test build --no-daemon --stacktrace --console=plain 2>&1 | tee "$RUNNER_TEMP/btb-gradle.log"
+        run: |
+          set -o pipefail
+          ./gradlew clean test build --no-daemon --stacktrace --console=plain 2>&1 | tee "$RUNNER_TEMP/btb-gradle.log"
       - name: Annotate Gradle failure
         if: failure()
         run: |
@@ -38,6 +40,12 @@ jobs:
               text = '\n'.join(highlights[:35] + ['--- log tail ---'] + lines[-70:])
               print('::error title=Gradle log::' + text.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D'))
           PY
+      - name: Upload optional client resource pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: betterthanbrewery-intoxication-pack
+          path: build/resource-pack/*.zip
+          if-no-files-found: error
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
