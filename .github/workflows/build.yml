@@ -24,7 +24,20 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
       - name: Test and build
-        run: ./gradlew clean test build --no-daemon --stacktrace --console=plain
+        run: ./gradlew clean test build --no-daemon --stacktrace --console=plain 2>&1 | tee "$RUNNER_TEMP/btb-gradle.log"
+      - name: Annotate Gradle failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          path = Path(os.environ['RUNNER_TEMP']) / 'btb-gradle.log'
+          if path.exists():
+              lines = path.read_text(errors='replace').splitlines()
+              highlights = [line for line in lines if 'error:' in line or 'FAILED' in line or 'Caused by:' in line]
+              text = '\n'.join(highlights[:35] + ['--- log tail ---'] + lines[-70:])
+              print('::error title=Gradle log::' + text.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D'))
+          PY
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
