@@ -74,6 +74,7 @@ public final class BetterThanBrewery extends JavaPlugin {
         if (cgr != null && cgr.isEnabled() && CustomGuiAPI.isInitialized()) {
             if (stations != null) {
                 stations.closeOpenGuis();
+                stations.unregisterHandlers();
                 CustomGuiAPI.unregisterSlotType(BreweryGuiTypes.FLUID_ID);
             }
             CustomGuiAPI.getFunctionalBlocks().tickDataSave();

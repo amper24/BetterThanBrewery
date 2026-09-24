@@ -91,12 +91,17 @@ public final class StationManager {
         }
     }
 
-    public void registerAll() {
-        for (StationDefinition old : stations.values()) for (String blockId : old.blockIds()) {
+    public void unregisterHandlers() {
+        for (StationDefinition station : stations.values()) for (String blockId : station.blockIds()) {
             CustomGuiAPI.getFunctionalBlocks().unregisterHandler(blockId);
             CustomGuiAPI.unregisterBlockGui(blockId);
         }
-        stations.clear(); byGui.clear(); activeBlockIds.clear(); fluidViews.clear();
+        activeBlockIds.clear(); fluidViews.clear();
+    }
+
+    public void registerAll() {
+        unregisterHandlers();
+        stations.clear(); byGui.clear();
         FileConfiguration config = plugin.getConfig();
         List<Integer> defaultFluidSlots = config.getIntegerList("gui.fluid-slots");
         if (defaultFluidSlots.isEmpty()) defaultFluidSlots = List.of(7, 8, 16, 17, 25, 26, 34, 35, 43, 44);
@@ -206,10 +211,9 @@ public final class StationManager {
                 })
                 .onClose((player, block) -> {
                     fluidViews.remove(player.getUniqueId());
-                    plugin.getServer().getScheduler().runTask(plugin, () -> {
-                        if (!hasStationOpen(station, block, player))
-                            activeBlockIds.remove(player.getUniqueId(), blockId);
-                    });
+                    activeBlockIds.remove(player.getUniqueId(), blockId);
+                    // Reopening the same block on this tick is safe: onOpen's
+                    // next-tick render restores the current session's ID.
                 })
                 .onBlockTick((block, data) -> tick(station, blockId, block, data))
                 .register();
