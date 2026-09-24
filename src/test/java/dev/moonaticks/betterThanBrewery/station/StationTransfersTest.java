@@ -40,7 +40,8 @@ class StationTransfersTest {
         StationDefinition boiler = station("boiler", 10, 10);
         Location location = mock(Location.class);
         Player player = mock(Player.class);
-        ItemStack bucket = new ItemStack(Material.WATER_BUCKET);
+        ItemStack bucket = mock(ItemStack.class);
+        when(bucket.getType()).thenReturn(Material.WATER_BUCKET);
         when(items.matches(bucket, "minecraft:water_bucket")).thenReturn(true);
         GuiSlotClickEvent click = mock(GuiSlotClickEvent.class);
         when(click.getCursor()).thenReturn(bucket);
@@ -69,7 +70,8 @@ class StationTransfersTest {
         StationManager stations = new StationManager(plugin, items, mock(ContainerService.class), drinks, lang, null, null);
         Location location = mock(Location.class);
         Player player = mock(Player.class);
-        ItemStack mug = new ItemStack(Material.POTION);
+        ItemStack mug = mock(ItemStack.class);
+        when(mug.getType()).thenReturn(Material.POTION);
         when(drinks.read(mug)).thenReturn(new DrinkTags.Tag("beer", 0, 6, 100, 3, "mug"));
         when(drinks.definition("beer")).thenReturn(mock(DrinkDefinition.class));
         GuiSlotClickEvent click = mock(GuiSlotClickEvent.class);

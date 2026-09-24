@@ -394,7 +394,7 @@ public final class StationManager {
             return;
         }
         boolean fluidSlot = station.fluidSlots().contains(slot);
-        if (fluidSlot && (cursor == null || cursor.getType().isAir())) {
+        if (fluidSlot && (cursor == null || cursor.getType() == Material.AIR)) {
             // The custom decorative fluid slot cannot be moved or filled with items.
             event.setInteractionCancelled(true);
             return;
@@ -405,7 +405,7 @@ public final class StationManager {
         if ((station.id().equals("distiller") || station.id().equals("barrel")) && slot == station.fluidInputSlot()) {
             if (acceptFluid(station, blockId, block, player, event)) return;
         }
-        if (fluidSlot && cursor != null && !cursor.getType().isAir()) {
+        if (fluidSlot && cursor != null && cursor.getType() != Material.AIR) {
             RecipeDefinition recipe = recipes.get(CustomGuiAPI.blockData(blockId, block).getString(RECIPE, ""));
             FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
             if (station.id().equals("boiler") && getFluid(data) == null && recipe != null
@@ -419,7 +419,7 @@ public final class StationManager {
     }
 
     private void handleWater(StationDefinition station, String blockId, Location block, Player player, GuiSlotClickEvent event) {
-        ItemStack cursor = event.getCursor(); if (cursor == null || cursor.getType().isAir()) return;
+        ItemStack cursor = event.getCursor(); if (cursor == null || cursor.getType() == Material.AIR) return;
         FunctionalBlockData data = CustomGuiAPI.blockData(blockId, block);
         if (data == null) return;
         WaterSource source = waterSource(cursor);
@@ -428,7 +428,7 @@ public final class StationManager {
             if (!FluidTransfer.fits(getInt(data, WATER, 0), station.waterCapacity(), source.units())) {
                 lang.send(player, "not-enough-space"); return;
             }
-            if (source.empty() == null || source.empty().getType().isAir()) {
+            if (source.empty() == null || source.empty().getType() == Material.AIR) {
                 lang.send(player, "unavailable-container"); return;
             }
             data.setInt(WATER, getInt(data, WATER, 0) + source.units());
@@ -440,7 +440,7 @@ public final class StationManager {
         event.setInteractionCancelled(true);
         if (getInt(data, WATER, 0) < container.units()) { lang.send(player, "not-enough-fluid"); return; }
         ItemStack output = drinks.createWater(container);
-        if (output.getType().isAir()) { lang.send(player, "unavailable-container"); return; }
+        if (output.getType() == Material.AIR) { lang.send(player, "unavailable-container"); return; }
         data.setInt(WATER, getInt(data, WATER, 0) - container.units());
         deliver(player, event.getClick(), cursor, output); playInteraction(player, "effects.sound-pour");
         updateWorking(station, blockId, block); scheduleRender(station, blockId, block);
@@ -459,7 +459,7 @@ public final class StationManager {
         int current = fluid == null ? 0 : getLevel(data);
         if (!FluidTransfer.fits(current, station.capacity(), tag.units())) { lang.send(player, "not-enough-space"); return true; }
         ItemStack empty = drinks.emptyFor(cursor);
-        if (empty.getType().isAir()) { lang.send(player, "unavailable-container"); return true; }
+        if (empty.getType() == Material.AIR) { lang.send(player, "unavailable-container"); return true; }
         // Same-fluid top-ups are weighted by volume: age/quality cannot be duplicated.
         int weekTicks = Math.max(1, plugin.getConfig().getInt("aging.week-ticks", 12096000));
         int incomingAge = (int) Math.min(Integer.MAX_VALUE, (long) Math.max(0, tag.ageWeeks()) * weekTicks);
@@ -486,7 +486,7 @@ public final class StationManager {
         String resultFluid = barrel == null ? fluid : barrel.outputFluid();
         ItemStack output = resultFluid.equalsIgnoreCase("water") ? drinks.createWater(container) : drinks.createFilled(resultFluid, ageWeeks, getDouble(data, QUALITY, 100), container);
         event.setInteractionCancelled(true);
-        if (output == null || output.getType().isAir()) { lang.send(player, "unavailable-drink"); return true; }
+        if (output == null || output.getType() == Material.AIR) { lang.send(player, "unavailable-drink"); return true; }
         data.setInt(LEVEL, getLevel(data) - container.units());
         if (getLevel(data) <= 0) { data.remove(FLUID); data.remove(LEVEL); data.remove(AGE); data.remove(QUALITY); data.remove(RECIPE); CustomGuiAPI.setWorking(blockId, block, false); }
         deliver(player, event.getClick(), event.getCursor(), output); scheduleRender(station, blockId, block); return true;
@@ -604,7 +604,7 @@ public final class StationManager {
         for (Byproduct byproduct : recipe.byproducts()) {
             if (ThreadLocalRandom.current().nextDouble() > byproduct.chance()) continue;
             ItemStack item = items.create(byproduct.item());
-            if (item.getType().isAir()) continue;
+            if (item.getType() == Material.AIR) continue;
             item.setAmount(Math.min(item.getMaxStackSize(), byproduct.amount()));
             block.getWorld().dropItemNaturally(block.clone().add(0.5, 1, 0.5), item);
         }

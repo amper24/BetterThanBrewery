@@ -1,5 +1,6 @@
 package dev.moonaticks.betterThanBrewery.item;
 
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -18,7 +19,7 @@ public final class DrinkTags {
     }
     public void write(ItemStack item, String drinkId, int ageWeeks, double alcoholValue, double qualityValue,
                       int unitCount, String containerId) {
-        if (item == null || item.getType().isAir()) return;
+        if (item == null || item.getType() == Material.AIR) return;
         ItemMeta meta = item.getItemMeta(); if (meta == null) return;
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         pdc.set(id, PersistentDataType.STRING, drinkId);
@@ -30,7 +31,7 @@ public final class DrinkTags {
         item.setItemMeta(meta);
     }
     public Tag read(ItemStack item) {
-        if (item == null || item.getType().isAir() || item.getItemMeta() == null) return null;
+        if (item == null || item.getType() == Material.AIR || item.getItemMeta() == null) return null;
         PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
         String drink = pdc.get(id, PersistentDataType.STRING);
         int amount = value(pdc, units, 1);

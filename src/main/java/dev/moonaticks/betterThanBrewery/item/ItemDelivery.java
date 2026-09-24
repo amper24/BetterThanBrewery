@@ -10,7 +10,7 @@ public final class ItemDelivery {
     private ItemDelivery() { }
 
     public static void giveOrDrop(Player player, ItemStack item) {
-        if (item == null || item.getType().isAir()) return;
+        if (item == null || item.getType() == Material.AIR) return;
         for (ItemStack overflow : player.getInventory().addItem(item.clone()).values()) {
             player.getWorld().dropItemNaturally(player.getLocation(), overflow);
         }

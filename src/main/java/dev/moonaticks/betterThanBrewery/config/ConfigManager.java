@@ -6,6 +6,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public final class ConfigManager {
     private final BetterThanBrewery plugin;
@@ -28,7 +31,20 @@ public final class ConfigManager {
                 "recipes/kettle/black-tea.yml", "recipes/kettle/mint-tea.yml",
                 "recipes/kettle/berry-tea.yml", "recipes/kettle/coffee.yml"}) copyIfMissing(resource);
         messagesFile = new File(plugin.getDataFolder(), "messages.yml");
-        messages = YamlConfiguration.loadConfiguration(messagesFile);
+        messages = loadMessages();
+    }
+
+    private FileConfiguration loadMessages() {
+        YamlConfiguration loaded = YamlConfiguration.loadConfiguration(messagesFile);
+        // Do not overwrite server translations; fall back to new bundled keys
+        // for existing installations with an older messages.yml.
+        try (InputStream stream = plugin.getResource("messages.yml")) {
+            if (stream != null) loaded.setDefaults(YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8)));
+        } catch (IOException ex) {
+            plugin.getLogger().warning("Cannot read default messages: " + ex.getMessage());
+        }
+        return loaded;
     }
 
     private void copyIfMissing(String resource) {
@@ -41,7 +57,7 @@ public final class ConfigManager {
 
     public void reload() {
         plugin.reloadConfig();
-        messages = YamlConfiguration.loadConfiguration(messagesFile);
+        messages = loadMessages();
     }
 
     public FileConfiguration config() { return plugin.getConfig(); }

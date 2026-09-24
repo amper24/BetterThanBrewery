@@ -50,7 +50,7 @@ public final class DrinkService {
         String spec = container == null ? "minecraft:potion" : container.filled();
         if ((container == null || container.useDrinkItem()) && !prepared.itemSpec().isBlank()) spec = prepared.itemSpec();
         ItemStack item = items.create(spec);
-        if (item == null || item.getType().isAir()) return new ItemStack(Material.AIR);
+        if (item == null || item.getType() == Material.AIR) return new ItemStack(Material.AIR);
         item = items.cloneWith(item, prepared.name(), prepared.lore(), drink.color());
         tags.write(item, drink.id(), ageWeeks, prepared.alcohol(), quality,
                 container == null ? 1 : container.units(), container == null ? "" : container.id());
@@ -60,7 +60,7 @@ public final class DrinkService {
     public ItemStack createWater(ContainerService.Container container) {
         String spec = container == null ? "minecraft:potion" : container.filled();
         ItemStack item = items.create(spec);
-        if (item == null || item.getType().isAir()) return new ItemStack(Material.AIR);
+        if (item == null || item.getType() == Material.AIR) return new ItemStack(Material.AIR);
         item = items.cloneWith(item, plugin.getConfig().getString("water.bottle-name", "&bВода"), List.of(), org.bukkit.Color.AQUA);
         tags.write(item, "water", 0, 0, 100, container == null ? 1 : container.units(),
                 container == null ? "" : container.id());
@@ -93,7 +93,7 @@ public final class DrinkService {
             ContainerService.Container container = containers.byId(tag.containerId());
             if (container != null) {
                 ItemStack empty = containers.createEmpty(container);
-                if (empty != null && !empty.getType().isAir()) return empty;
+                if (empty != null && empty.getType() != Material.AIR) return empty;
             }
         }
         // Best-effort compatibility for drinks made before the container ID existed.

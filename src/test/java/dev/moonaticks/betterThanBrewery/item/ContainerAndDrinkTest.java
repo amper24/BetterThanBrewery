@@ -30,7 +30,7 @@ class ContainerAndDrinkTest {
     @Test
     void vesselIdentitySurvivesFillingDrinkingAndTransferringWater() {
         BetterThanBrewery plugin = mock(BetterThanBrewery.class);
-        when(plugin.getName()).thenReturn("BetterThanBrewery");
+        when(plugin.namespace()).thenReturn("betterthanbrewery");
         YamlConfiguration config = new YamlConfiguration();
         config.set("containers.bottle.empty", "minecraft:glass_bottle");
         config.set("containers.bottle.filled", "minecraft:potion");
@@ -95,7 +95,7 @@ class ContainerAndDrinkTest {
         verify(consume).setReplacement(bowl);
         assertEquals(-8.0, sobered.get());
 
-        assertTrue(drinks.createFilled("deleted_recipe", 0, 100, cup).getType().isAir(),
+        assertEquals(Material.AIR, drinks.createFilled("deleted_recipe", 0, 100, cup).getType(),
                 "missing output must not silently create water");
         data.remove(new NamespacedKey(plugin, "container"));
         assertEquals("", drinks.read(full).containerId(), "legacy items without a container ID remain readable");
@@ -104,7 +104,7 @@ class ContainerAndDrinkTest {
     @Test
     void malformedZeroVolumeIsNotPourable() {
         BetterThanBrewery plugin = mock(BetterThanBrewery.class);
-        when(plugin.getName()).thenReturn("BetterThanBrewery");
+        when(plugin.namespace()).thenReturn("betterthanbrewery");
         PersistentDataContainer pdc = mock(PersistentDataContainer.class);
         ItemMeta meta = mock(ItemMeta.class);
         ItemStack item = mock(ItemStack.class);
