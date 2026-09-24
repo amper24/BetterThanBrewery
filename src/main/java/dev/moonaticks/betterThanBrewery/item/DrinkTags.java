@@ -34,12 +34,20 @@ public final class DrinkTags {
         if (item == null || item.getType() == Material.AIR || item.getItemMeta() == null) return null;
         PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
         String drink = pdc.get(id, PersistentDataType.STRING);
+        if (drink == null || drink.isBlank()) return null;
         int amount = value(pdc, units, 1);
+        if (amount <= 0) return null; // Reject damaged vessels before reading any optional fields.
         double strength = decimal(pdc, alcohol, 0), grade = decimal(pdc, quality, 100);
-        if (drink == null || drink.isBlank() || amount <= 0 || !Double.isFinite(strength) || !Double.isFinite(grade)) return null;
-        return new Tag(drink, value(pdc, age, 0), strength, grade, amount,
-                pdc.getOrDefault(container, PersistentDataType.STRING, ""));
+        if (!Double.isFinite(strength) || !Double.isFinite(grade)) return null;
+        String containerId = pdc.getOrDefault(container, PersistentDataType.STRING, "");
+        return new Tag(drink, value(pdc, age, 0), strength, grade, amount, containerId == null ? "" : containerId);
     }
-    private static int value(PersistentDataContainer pdc, NamespacedKey key, int fallback) { return pdc.getOrDefault(key, PersistentDataType.INTEGER, fallback); }
-    private static double decimal(PersistentDataContainer pdc, NamespacedKey key, double fallback) { return pdc.getOrDefault(key, PersistentDataType.DOUBLE, fallback); }
+    private static int value(PersistentDataContainer pdc, NamespacedKey key, int fallback) {
+        Integer number = pdc.getOrDefault(key, PersistentDataType.INTEGER, fallback);
+        return number == null ? fallback : number;
+    }
+    private static double decimal(PersistentDataContainer pdc, NamespacedKey key, double fallback) {
+        Double number = pdc.getOrDefault(key, PersistentDataType.DOUBLE, fallback);
+        return number == null ? fallback : number;
+    }
 }

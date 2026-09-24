@@ -20,6 +20,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import java.util.ArrayDeque;
@@ -78,7 +79,14 @@ class RecipeBookManagerTest {
             nextTick.add(call.getArgument(1));
             return mock(BukkitTask.class);
         });
-        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+        // Paper's real ItemStack constructors need a running server/registry.
+        // Mock only those construction calls; GUI behavior stays under test.
+        try (MockedConstruction<ItemStack> stacks = mockConstruction(ItemStack.class, (created, context) -> {
+                 if (context.arguments().get(0) instanceof Material material) when(created.getType()).thenReturn(material);
+                 when(created.clone()).thenReturn(created);
+                 when(created.getMaxStackSize()).thenReturn(64);
+             });
+             MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
             bukkit.when(Bukkit::getScheduler).thenReturn(scheduler);
             bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of(player));
             bukkit.when(() -> Bukkit.createInventory(any(InventoryHolder.class), anyInt(), anyString()))

@@ -95,8 +95,8 @@ class ContainerAndDrinkTest {
         verify(consume).setReplacement(bowl);
         assertEquals(-8.0, sobered.get());
 
-        assertEquals(Material.AIR, drinks.createFilled("deleted_recipe", 0, 100, cup).getType(),
-                "missing output must not silently create water");
+        assertNull(drinks.createFilled("deleted_recipe", 0, 100, cup),
+                "missing output must not silently create water or consume liquid");
         data.remove(new NamespacedKey(plugin, "container"));
         assertEquals("", drinks.read(full).containerId(), "legacy items without a container ID remain readable");
     }

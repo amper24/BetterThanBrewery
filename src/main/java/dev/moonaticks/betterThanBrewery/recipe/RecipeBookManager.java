@@ -281,7 +281,7 @@ public final class RecipeBookManager implements Listener {
 
     private ItemStack configuredItem(String spec, Material fallback) {
         ItemStack item = items.create(spec);
-        return item.getType().isAir() ? new ItemStack(fallback) : item;
+        return item == null || item.getType() == Material.AIR ? new ItemStack(fallback) : item;
     }
 
     private ItemStack textItem(Material material, String name) {

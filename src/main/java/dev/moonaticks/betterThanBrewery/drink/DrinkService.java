@@ -44,13 +44,14 @@ public final class DrinkService {
     }
     public ItemStack createFilled(String fluidId, int ageWeeks, double quality, ContainerService.Container container) {
         // A missing recipe must never silently turn a full tank into water.
+        // null is an unavailable output; the station leaves both the tank and vessel untouched.
         DrinkDefinition drink = registry.drink(fluidId);
-        if (drink == null) return new ItemStack(Material.AIR);
+        if (drink == null) return null;
         Prepared prepared = prepare(drink, ageWeeks, quality);
         String spec = container == null ? "minecraft:potion" : container.filled();
         if ((container == null || container.useDrinkItem()) && !prepared.itemSpec().isBlank()) spec = prepared.itemSpec();
         ItemStack item = items.create(spec);
-        if (item == null || item.getType() == Material.AIR) return new ItemStack(Material.AIR);
+        if (item == null || item.getType() == Material.AIR) return null;
         item = items.cloneWith(item, prepared.name(), prepared.lore(), drink.color());
         tags.write(item, drink.id(), ageWeeks, prepared.alcohol(), quality,
                 container == null ? 1 : container.units(), container == null ? "" : container.id());
@@ -60,7 +61,7 @@ public final class DrinkService {
     public ItemStack createWater(ContainerService.Container container) {
         String spec = container == null ? "minecraft:potion" : container.filled();
         ItemStack item = items.create(spec);
-        if (item == null || item.getType() == Material.AIR) return new ItemStack(Material.AIR);
+        if (item == null || item.getType() == Material.AIR) return null;
         item = items.cloneWith(item, plugin.getConfig().getString("water.bottle-name", "&bВода"), List.of(), org.bukkit.Color.AQUA);
         tags.write(item, "water", 0, 0, 100, container == null ? 1 : container.units(),
                 container == null ? "" : container.id());
